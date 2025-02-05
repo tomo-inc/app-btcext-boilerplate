@@ -1,0 +1,4 @@
+[submodule "bitcoin_app_base"]
+	path = bitcoin_app_base
+	url = https://github.com/LedgerHQ/app-bitcoin-new
+	branch = baseapp
