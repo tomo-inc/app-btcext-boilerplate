@@ -1,0 +1,68 @@
+# ****************************************************************************
+#    Ledger App Bitcoin
+#    (c) 2023 Ledger SAS.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+# ****************************************************************************
+
+########################################
+#        Mandatory configuration       #
+########################################
+
+# Application version
+APPVERSION_M = 0
+APPVERSION_N = 1
+APPVERSION_P = 0
+APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
+
+APPDEVELOPPER="Ledger"
+APPCOPYRIGHT="(c) 2025 Ledger"
+
+VARIANT_VALUES = foo foo_testnet
+
+# Application source files
+# There is no additional sources for bitcoin
+#APP_SOURCE_PATH += src/
+
+# simplify for tests
+ifndef COIN
+COIN=foo_testnet
+endif
+
+# Enabling DEBUG flag will enable PRINTF and disable optimizations
+#DEBUG = 1
+
+APP_DESCRIPTION ="This app enables signing\nFoo transactions\nfor all you Fools."
+
+ifeq ($(COIN),foo)
+APPNAME ="Foo"
+BITCOIN_NETWORK =mainnet
+
+else ifeq ($(COIN),foo_testnet)
+APPNAME ="Foo Testnet"
+BITCOIN_NETWORK =testnet
+
+else ifeq ($(filter clean,$(MAKECMDGOALS)),)
+$(error Unsupported COIN - use $(VARIANT_VALUES))
+endif
+
+APP_SOURCE_PATH += bitcoin_app_base/src src
+
+# Application icons following guidelines:
+# https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
+ICON_NANOX = icons/nanox_app_foo.gif
+ICON_NANOSP = icons/nanox_app_foo.gif
+ICON_STAX = icons/stax_app_foo.gif
+ICON_FLEX = icons/flex_app_foo.gif
+
+include bitcoin_app_base/Makefile
