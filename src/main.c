@@ -19,6 +19,30 @@ static const uint32_t magic_pubkey_path[] = {86^H, 1^H, 99^H};
 // records the value of the special input across calls
 static uint64_t magic_input_value;
 
+// define a custom INS code
+// use values >= 128 to avoid future conflicts with the APDUs of the base app
+#define INS_CUSTOM_XOR 128
+
+// A custom APDU that returns the xor of all the input bytes as a single byte.
+// Such compression. Wow.
+bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
+    if (cmd->cla != CLA_APP) {
+        return false;
+    }
+    if (cmd->ins == INS_CUSTOM_XOR) {
+        uint8_t result = 0;
+        for (int i = 0; i < cmd->lc; i++) {
+            result ^= cmd->data[i];
+        }
+
+        SEND_RESPONSE(dc, &result, 1, SW_OK);
+        return true;
+    }
+
+    return false;
+}
+
+
 static bool validate_transaction(
     dispatcher_context_t *dc,
     sign_psbt_state_t *st,
