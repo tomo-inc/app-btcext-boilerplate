@@ -6,6 +6,7 @@
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map_value.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "../bitcoin_app_base/src/handler/sign_psbt/txhashes.h"
 #include "../bitcoin_app_base/src/crypto.h"
 
 #include "display.h"
@@ -16,8 +17,12 @@ static const uint8_t OP_RETURN_FOO[] = {0x6a, 0x03, 'F', 'O', 'O'};
 static const uint32_t magic_pubkey_path[] = {86^H, 1^H, 99^H};
 
 
+# define P2TR_SCRIPTPUBKEY_LEN 34
 // records the value of the special input across calls
 static uint64_t magic_input_value;
+static int external_input_index;
+static merkleized_map_commitment_t external_input_map;
+static uint8_t external_input_scriptPubKey[P2TR_SCRIPTPUBKEY_LEN];
 
 // define a custom INS code
 // use values >= 128 to avoid future conflicts with the APDUs of the base app
@@ -50,7 +55,7 @@ static bool validate_transaction(
     const uint8_t internal_outputs[64]) {
 
     // check that all inputs are indeed internal, except one
-    int external_input_index = -1;
+    external_input_index = -1;
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {
             if (external_input_index != -1) {
@@ -71,8 +76,7 @@ static bool validate_transaction(
     // check that the external input is rawtr(key) where the key is m/86'/1'/99'
 
     // obtain the commitment to the i-th output's map
-    merkleized_map_commitment_t input_map;
-    if (0 > call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, external_input_index, &input_map)) {
+    if (0 > call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, external_input_index, &external_input_map)) {
         PRINTF("Failed to get input map\n");
         return false;
     }
@@ -81,7 +85,7 @@ static bool validate_transaction(
     uint8_t witness_utxo[8 + 1 + 34]; // 8 bytes amount; 1 byte length; 34 bytes P2TR Script
 
     if (8 + 1 + 34 != call_get_merkleized_map_value(dc,
-                                                    &input_map,
+                                                    &external_input_map,
                                                     (uint8_t[]){PSBT_IN_WITNESS_UTXO},
                                                     sizeof((uint8_t[]){PSBT_IN_WITNESS_UTXO}),
                                                     witness_utxo,
@@ -108,8 +112,11 @@ static bool validate_transaction(
         return false;
     }
     uint8_t *expected_key = xpub.compressed_pubkey + 1; // x-only key
+    external_input_scriptPubKey[0] = 0x51;
+    external_input_scriptPubKey[1] = 0x20;
+    memcpy(external_input_scriptPubKey + 2, expected_key, 32);
 
-    if (spk[0] != 0x51 || spk[1] != 0x20 || memcmp(spk + 2, expected_key, 32) != 0) {
+    if (memcmp(spk, external_input_scriptPubKey, P2TR_SCRIPTPUBKEY_LEN) != 0) {
         // the expected special input was not found
         PRINTF("Invalid scriptPubKey. Where's my magic?\n");
 
@@ -216,7 +223,41 @@ bool sign_custom_inputs(
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
     UNUSED(dc), UNUSED(st), UNUSED(tx_hashes), UNUSED(internal_inputs);
 
-    // TODO: sign the special input
+    uint8_t sighash[32];
+
+    // compute the sighash for the special input
+
+    if (!compute_sighash_segwitv1(
+        dc,
+        st,
+        tx_hashes,
+        &external_input_map,
+        external_input_index,
+        external_input_scriptPubKey,
+        sizeof(external_input_scriptPubKey),
+        NULL,
+        SIGHASH_DEFAULT,
+        sighash
+    )) {
+        PRINTF("Failed to compute the sighash\n");
+        SEND_SW(dc, SW_BAD_STATE);
+        return false;
+    }
+
+    if (!sign_sighash_schnorr_and_yield(dc,
+        st,
+        external_input_index,
+        magic_pubkey_path,
+        ARRAYLEN(magic_pubkey_path),
+        NULL,
+        0,
+        NULL,
+        SIGHASH_DEFAULT,
+        sighash)) {
+        PRINTF("Signing failed\n");
+        SEND_SW(dc, SW_BAD_STATE);
+        return false;    
+    }
 
     return true;
 }
