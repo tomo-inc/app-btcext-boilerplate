@@ -5,9 +5,8 @@
 #include "io.h"
 #include "nbgl_use_case.h"
 
-
 static void review_choice(bool approved) {
-    set_ux_flow_response(approved); // sets the return value of io_ui_process
+    set_ux_flow_response(approved);  // sets the return value of io_ui_process
 
     if (approved) {
         // nothing to do in this case; after signing, the responsibility to show the main menu
@@ -19,7 +18,10 @@ static void review_choice(bool approved) {
 
 #define MAX_N_PAIRS 4;
 
-bool display_transaction(dispatcher_context_t *dc, int64_t value_spent, uint64_t magic_input_value, uint64_t fee) {
+bool display_transaction(dispatcher_context_t *dc,
+                         int64_t value_spent,
+                         uint64_t magic_input_value,
+                         uint64_t fee) {
     nbgl_layoutTagValue_t pairs[4];
     nbgl_layoutTagValueList_t pairList;
 
@@ -60,7 +62,6 @@ bool display_transaction(dispatcher_context_t *dc, int64_t value_spent, uint64_t
 
     assert(n_pairs <= MAX_N_PAIRS);
 
-
     // Setup list
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = n_pairs;
@@ -73,7 +74,6 @@ bool display_transaction(dispatcher_context_t *dc, int64_t value_spent, uint64_t
                        NULL,
                        "Sign transaction\nto create a FOO output?",
                        review_choice);
-
 
     bool result = io_ui_process(dc);
     if (!result) {

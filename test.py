@@ -1,3 +1,30 @@
+"""
+This stand-alone script demonstrates how to interact with a Ledger device with
+the boilerplate custom app, using the `ledger_bitcoin` client library.
+
+Similar code is also part of the pytest suite in the `tests` folder, which is
+the recommended way of testing the application.
+
+
+Install `ledger_bitcoin` in a virtual environment:
+
+```
+$ python -m venv venv
+$ source venv/bin/activate
+$ pip install ledger_bitcoin
+```
+
+Launch the app in speculos using another terminal, then launch the test script:
+
+```
+python test.py
+```
+
+The script will get the device's master fingerprint, call a custom APDU and
+verify the response; then, it will sign a PSBT for a custom transaction as
+supported by this boilerplate app.
+"""
+
 from ledger_bitcoin import Chain, TransportClient, WalletPolicy
 from ledger_bitcoin.client import NewClient as AppClient
 from ledger_bitcoin.psbt import PSBT
