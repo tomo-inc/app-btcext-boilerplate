@@ -11,7 +11,7 @@ if __name__ == '__main__':
     client = AppClient(transport, chain=Chain.TEST)
 
     # Tests a custom APDU. A real application should implement a
-    # custom client instad of using raw APDUs.
+    # custom client instead of using raw APDUs.
     data = bytes([1, 2, 3, 4, 5])
     res = transport.apdu_exchange(CLA_APP, INS_CUSTOM_XOR, data, 0, 0)
     assert res == bytes([1 ^ 2 ^ 3 ^ 4 ^ 5])
