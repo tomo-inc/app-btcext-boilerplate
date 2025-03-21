@@ -1,0 +1,5 @@
+bitcoin_app_base
+bitcoin_app_base/*
+bitcoin_app_base/**/*
+bitcoin_app_base/**/**/*
+bitcoin_app_base/**/**/**/*
