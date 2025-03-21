@@ -28,7 +28,7 @@ APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 APPDEVELOPPER="Ledger"
 APPCOPYRIGHT="(c) 2025 Ledger"
 
-VARIANT_VALUES = foo foo_testnet
+VARIANT_VALUES = btcext_boilerplate btcext_boilerplate_testnet
 
 # Application source files
 # There is no additional sources for bitcoin
@@ -36,7 +36,7 @@ VARIANT_VALUES = foo foo_testnet
 
 # simplify for tests
 ifndef COIN
-COIN=foo_testnet
+COIN=btcext_boilerplate_testnet
 endif
 
 # Enabling DEBUG flag will enable PRINTF and disable optimizations
@@ -44,12 +44,12 @@ endif
 
 APP_DESCRIPTION ="This app enables signing\nFoo transactions\nfor all you Fools."
 
-ifeq ($(COIN),foo)
-APPNAME ="Foo"
+ifeq ($(COIN),btcext_boilerplate)
+APPNAME ="Btcext Boilerplate"
 BITCOIN_NETWORK =mainnet
 
-else ifeq ($(COIN),foo_testnet)
-APPNAME ="Foo Testnet"
+else ifeq ($(COIN),btcext_boilerplate_testnet)
+APPNAME ="Btcext Boilerplate Testnet"
 BITCOIN_NETWORK =testnet
 
 else ifeq ($(filter clean,$(MAKECMDGOALS)),)
