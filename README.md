@@ -32,7 +32,14 @@ This function must validate all the external inputs, and it MUST reject if any u
 
 This function can be implemented to allow the derived app to sign for external inputs, are all the inputs that do not belong to the wallet policy (and are therefore custom to the protocol of the derived app - as any unrecognized input would have been rejected by <code>validate_and_display_transaction</code>).
 
-If there is no such inputs, then this function can be omitted.
+The function can use the functionality implemented in the base app in order to comput the sighash and yield the signatures returned to the client:
+- SegWitV1 (taproot) inputs: `compute_sighash_segwitv1` and `sign_sighash_schnorr_and_yield`;
+- SegWitV0 inputs: `compute_sighash_segwitv0` and `sign_sighash_ecdsa_and_yield`;
+- Legacy inputs: you should probably not use custom legacy inputs.
+
+Please consult the code of the base app for exact documentation about those functions.
+
+If there are no external inputs to sign for, then this function can be omitted.
 
 ### <code>custom_apdu_handler</code>
 
