@@ -292,7 +292,6 @@ bool sign_custom_inputs(
                                   SIGHASH_DEFAULT,
                                   sighash)) {
         PRINTF("Failed to compute the sighash\n");
-        SEND_SW(dc, SW_BAD_STATE);
         return false;
     }
 
@@ -307,7 +306,6 @@ bool sign_custom_inputs(
                                         SIGHASH_DEFAULT,
                                         sighash)) {
         PRINTF("Signing failed\n");
-        SEND_SW(dc, SW_BAD_STATE);
         return false;
     }
 
