@@ -69,7 +69,7 @@ bool display_transaction(dispatcher_context_t *dc,
 
     nbgl_useCaseReview(TYPE_TRANSACTION,
                        &pairList,
-                       &C_App_64px,
+                       &ICON_APP_ACTION,
                        "Review transaction\nto a FOO output",
                        NULL,
                        "Sign transaction\nto create a FOO output?",
