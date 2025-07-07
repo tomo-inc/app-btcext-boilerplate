@@ -37,10 +37,12 @@ from ragger_bitcoin import createRaggerClient, RaggerClient
 # Pull all features from the base ragger conftest using the overridden configuration
 pytest_plugins = ("ragger.conftest.base_conftest", )
 
+def pytest_addoption(parser):
+    parser.addoption("--network", default="test")
 
 @pytest.fixture
-def bitcoin_network() -> Union[Literal['main'], Literal['test']]:
-    network = os.getenv("BITCOIN_NETWORK", "test")
+def bitcoin_network(pytestconfig) -> Union[Literal['main'], Literal['test']]:
+    network = pytestconfig.getoption("network")
     if network not in ["main", "test"]:
         raise ValueError(
             f'Invalid value for BITCOIN_NETWORK: {network}')
