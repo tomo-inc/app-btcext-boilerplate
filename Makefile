@@ -25,32 +25,30 @@ APPVERSION_N = 1
 APPVERSION_P = 0
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
-APPDEVELOPPER="Ledger"
-APPCOPYRIGHT="(c) 2025 Ledger"
+APPDEVELOPPER = "Ledger"
+APPCOPYRIGHT = "(c) 2025 Ledger"
 
+# Setting to allow building variant applications
+VARIANT_PARAM = COIN
 VARIANT_VALUES = btcext_boilerplate btcext_boilerplate_testnet
-
-# Application source files
-# There is no additional sources for bitcoin
-#APP_SOURCE_PATH += src/
 
 # simplify for tests
 ifndef COIN
-COIN=btcext_boilerplate_testnet
+COIN = btcext_boilerplate_testnet
 endif
 
 # Enabling DEBUG flag will enable PRINTF and disable optimizations
 #DEBUG = 1
 
-APP_DESCRIPTION ="This app enables signing\nFoo transactions\nfor all you Fools."
+APP_DESCRIPTION = "This app enables signing\nFoo transactions\nfor all you Fools."
 
 ifeq ($(COIN),btcext_boilerplate)
-APPNAME ="Btcext Boilerplate"
-BITCOIN_NETWORK =mainnet
+APPNAME = "Btcext Boilerplate"
+BITCOIN_NETWORK = mainnet
 
 else ifeq ($(COIN),btcext_boilerplate_testnet)
-APPNAME ="Btcext Boilerplate Testnet"
-BITCOIN_NETWORK =testnet
+APPNAME = "Btcext Boilerplate Testnet"
+BITCOIN_NETWORK = testnet
 
 else ifeq ($(filter clean,$(MAKECMDGOALS)),)
 $(error Unsupported COIN - use $(VARIANT_VALUES))
