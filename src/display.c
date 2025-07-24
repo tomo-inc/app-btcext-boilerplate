@@ -20,22 +20,34 @@ static void review_choice(bool approved) {
 
 bool display_transaction(dispatcher_context_t *dc,
                          int64_t value_spent,
-                         uint64_t magic_input_value,
+                         uint8_t* scriptpubkey,
                          uint64_t fee) {
     nbgl_layoutTagValue_t pairs[4];
     nbgl_layoutTagValueList_t pairList;
 
     // format value_spent
-    char value_str[32], magic_value_str[32], fee_str[32];
+    char value_str[32], addr_str[64], fee_str[32];
     uint64_t value_spent_abs = value_spent < 0 ? -value_spent : value_spent;
     format_sats_amount(COIN_COINID_SHORT, value_spent_abs, value_str);
-    format_sats_amount(COIN_COINID_SHORT, magic_input_value, magic_value_str);
     format_sats_amount(COIN_COINID_SHORT, fee, fee_str);
+    // Convert scriptpubkey to address string
+    // if (!scriptpubkey_to_address(scriptpubkey, addr_str, sizeof(addr_str))) {
+    //     // handle error, fallback to hex or empty string
+    //     strncpy(addr_str, "Invalid address", sizeof(addr_str));
+    //     addr_str[sizeof(addr_str) - 1] = '\0';
+    // }
+
+    char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
+
+    if (!format_script(scriptpubkey, 34, output_description)) {
+        SEND_SW(dc, SW_NOT_SUPPORTED);
+        return false;
+    }
 
     int n_pairs = 0;
     pairs[n_pairs++] = (nbgl_layoutTagValue_t){
         .item = "Transaction type",
-        .value = "FOO",
+        .value = "Babylon",
     };
 
     if (value_spent >= 0) {
@@ -51,8 +63,8 @@ bool display_transaction(dispatcher_context_t *dc,
     }
 
     pairs[n_pairs++] = (nbgl_layoutTagValue_t){
-        .item = "Magic value",
-        .value = magic_value_str,
+        .item = "Address",
+        .value = output_description,
     };
 
     pairs[n_pairs++] = (nbgl_layoutTagValue_t){
@@ -70,9 +82,9 @@ bool display_transaction(dispatcher_context_t *dc,
     nbgl_useCaseReview(TYPE_TRANSACTION,
                        &pairList,
                        &ICON_APP_ACTION,
-                       "Review transaction\nto a FOO output",
+                       "Review transaction\nBabylon Staking",
                        NULL,
-                       "Sign transaction\nto create a FOO output?",
+                       "Sign transaction\nFor Babylon Staking",
                        review_choice);
 
     // blocking call until the user approves or rejects the transaction
