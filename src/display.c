@@ -5,7 +5,7 @@
 #include "io.h"
 #include "nbgl_use_case.h"
 
-#define MAX_N_PAIRS 16
+#define MAX_N_PAIRS 4
 
 static void review_choice(bool approved) {
     set_ux_flow_response(approved);  // sets the return value of io_ui_process
@@ -37,8 +37,10 @@ bool display_public_keys(dispatcher_context_t *dc,
         labels[i][3] = ' ';
         labels[i][4] = '1' + i;
         labels[i][5] = '\0';
-        pairs[n_pairs].item = labels[i];
-        pairs[n_pairs].value = hexbuf[i];
+        pairs[n_pairs] = (nbgl_layoutTagValue_t) {
+            .item = labels[i],
+            .value = hexbuf[i],
+        };
         n_pairs++;
     }
 

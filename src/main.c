@@ -404,7 +404,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     memset(pubkeys[2], 0x33, 64);
     memset(pubkeys[3], 0x34, 64);
     memset(pubkeys[4], 0x35, 64);
-    if (!display_public_keys(dc, 5, pubkeys, 1)) {
+    if (!display_public_keys(dc, 2, pubkeys, 1)) {
         PRINTF("display_public_keys failed\n");
         return false;
     }
