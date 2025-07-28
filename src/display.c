@@ -6,6 +6,16 @@
 #include "nbgl_use_case.h"
 
 #define MAX_N_PAIRS 4
+static const char *confirmed_status;  // text displayed in confirmation page (after long press)
+static const char *rejected_status;   // text displayed in rejection page (after reject confirmed)
+
+static void ux_flow_response_true(void) {
+    set_ux_flow_response(true);
+}
+
+static void ux_flow_response_false(void) {
+    set_ux_flow_response(false);
+}
 
 static void review_choice(bool approved) {
     set_ux_flow_response(approved);  // sets the return value of io_ui_process
@@ -15,6 +25,19 @@ static void review_choice(bool approved) {
         // goes back to the base app's handler
     } else {
         nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED, ui_menu_main);
+    }
+}
+static void status_operation_cancel(void) {
+    ux_flow_response_false();
+    nbgl_useCaseStatus(rejected_status, false, ui_menu_main);
+}
+
+static void status_operation_callback(bool confirm) {
+    if (confirm) {
+        ux_flow_response_true();
+        nbgl_useCaseStatus(confirmed_status, true, ui_menu_main);
+    } else {
+        status_operation_cancel();
     }
 }
 
@@ -28,6 +51,14 @@ bool display_public_keys(dispatcher_context_t *dc,
     char hexbuf[16][65];
     char labels[16][8];
     int n_pairs = 0;
+    char quorum_value[8];
+    snprintf(quorum_value, sizeof(quorum_value), "%d", 2);                        
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+    pairs[0].item = "Covenant quorum";
+    pairs[0].value = quorum_value;
+    n_pairs++;                        
+
     for (uint32_t i = 0; i < pub_count; i++) {
         memcpy(hexbuf[i], pubkey[i], 64);
         hexbuf[i][64] = '\0';
@@ -47,14 +78,21 @@ bool display_public_keys(dispatcher_context_t *dc,
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = n_pairs;
     pairList.pairs = pairs;
-
-    nbgl_useCaseReview(TYPE_TRANSACTION,
-                       &pairList,
-                       &ICON_APP_ACTION,
-                       "Review transaction\nBabylon Staking",
-                       NULL,
-                       "Sign transaction\nFor Babylon Staking",
-                       review_choice);
+    PRINTF("Reviewing public keys: %d\n", n_pairs);
+    // nbgl_useCaseReview(TYPE_TRANSACTION,
+    //                    &pairList,
+    //                    &ICON_APP_ACTION,
+    //                    "Review transaction\nBabylon Staking",
+    //                    NULL,
+    //                    "Sign transaction\nFor Babylon Staking",
+    //                    review_choice);
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Covenant public keys",
+                            NULL,
+                            "Confirm covenant\npublic keys",
+                            status_operation_callback);
 
     // blocking call until the user approves or rejects the transaction
     bool result = io_ui_process(dc);
@@ -141,7 +179,10 @@ bool display_transaction(dispatcher_context_t *dc,
 }
 
 bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
-    static char action_name[32];
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+    static char action_name[64];
+    static char action_name_approve[64];
     switch ((bbn_action_type_t)action_type) {
         case BBN_POLICY_SLASHING:
             strncpy(action_name, BBN_POLICY_NAME_SLASHING, sizeof(action_name) - 1);
@@ -167,21 +208,24 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
     }
     action_name[sizeof(action_name) - 1] = '\0';
 
+    // 构造 "Approve ..." 字符串
+    snprintf(action_name_approve, sizeof(action_name_approve), "Approve %s", action_name);
+
     static nbgl_layoutTagValue_t pair;
     static nbgl_layoutTagValueList_t pairList;
-    pair.item = "Action";
+    pair.item = "Action name";
     pair.value = action_name;
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = 1;
     pairList.pairs = &pair;
     PRINTF("Reviewing action: %s\n", action_name);
-    nbgl_useCaseReview(TYPE_TRANSACTION,
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
                        &pairList,
                        &ICON_APP_ACTION,
-                       "Review action",
+                       "Babylon action",
                        NULL,
-                       "Approve action",
-                       review_choice);
+                       action_name_approve,
+                       status_operation_callback);
 
     // blocking call until the user approves or rejects the action
     bool result = io_ui_process(dc);
