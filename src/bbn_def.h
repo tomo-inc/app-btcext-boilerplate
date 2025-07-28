@@ -1,0 +1,53 @@
+#define BBN_POLICY_NAME_SLASHING           "Consent to slashing"
+#define BBN_POLICY_NAME_SLASHING_UNBONDING "Consent to unbonding slashing"
+#define BBN_POLICY_NAME_STAKE_TRANSFER     "Staking transaction"
+#define BBN_POLICY_NAME_UNBOND             "Unbonding"
+#define BBN_POLICY_NAME_WITHDRAW           "Withdraw"
+#define BBN_POLICY_NAME_BIP322_MESSAGE     "Sign message"
+
+#define BBN_UNBONDING_MAX_FEE_CONST 9000
+#define BBN_UNBONDING_MIN_FEE_CONST 1000
+#define BBN_SLASHING_MAX_FEE_CONST  9000
+#define BBN_SLASHING_MIN_FEE_CONST  1000
+
+typedef enum {
+    BBN_POLICY_UNKNOWN = -1,
+    BBN_POLICY_SLASHING,
+    BBN_POLICY_SLASHING_UNBONDING,
+    BBN_POLICY_STAKE_TRANSFER,
+    BBN_POLICY_UNBOND,
+    BBN_POLICY_WITHDRAW,
+    BBN_POLICY_BIP322,
+} bbn_action_type_t;
+
+// Atomic byte constants
+#define TX_VER_BYTES 0x00, 0x00, 0x00, 0x00
+#define TX_IN_CNT    0x01
+#define TX_DUMMY_TXID                                                                             \
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     \
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+        0x00, 0x00
+
+#define TX_VOUT_INDEX    0xff, 0xff, 0xff, 0xff
+#define TX_SCRIPTSIG_LEN 0x22
+#define TX_SCRIPTSIG_TAG 0x00, 0x20
+
+#define TX_SEQ_BYTES 0x00, 0x00, 0x00, 0x00
+#define TX_OUT_CNT   0x01
+#define TX_OUT_VALUE 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+#define TX_SPK_LEN   0x22
+#define TX_SPK_TAG   0x51, 0x20
+#define TX_LOCKTIME  0x00, 0x00, 0x00, 0x00
+
+#define OFFSET_MSG_HASH 44
+#define OFFSET_PUBKEY   92
+
+// Fixed parts of tx as macros
+#define TX_PREFIX \
+    TX_VER_BYTES, TX_IN_CNT, TX_DUMMY_TXID, TX_VOUT_INDEX, TX_SCRIPTSIG_LEN, TX_SCRIPTSIG_TAG
+
+#define TX_MIDFIX TX_SEQ_BYTES, TX_OUT_CNT, TX_OUT_VALUE, TX_SPK_LEN, TX_SPK_TAG
+
+#define TX_SUFFIX TX_LOCKTIME
+
+#define BIP32_PUBKEY_MAINNET 0x0488B21E

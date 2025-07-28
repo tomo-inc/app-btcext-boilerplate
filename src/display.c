@@ -1,5 +1,5 @@
 #include "display.h"
-
+#include "bbn_def.h"
 #include "../bitcoin_app_base/src/ui/display.h"
 #include "../bitcoin_app_base/src/ui/menu.h"
 #include "io.h"
@@ -131,6 +131,59 @@ bool display_transaction(dispatcher_context_t *dc,
                        review_choice);
 
     // blocking call until the user approves or rejects the transaction
+    bool result = io_ui_process(dc);
+    if (!result) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+
+    return true;
+}
+
+bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
+    static char action_name[32];
+    switch ((bbn_action_type_t)action_type) {
+        case BBN_POLICY_SLASHING:
+            strncpy(action_name, BBN_POLICY_NAME_SLASHING, sizeof(action_name) - 1);
+            break;
+        case BBN_POLICY_SLASHING_UNBONDING:
+            strncpy(action_name, BBN_POLICY_NAME_SLASHING_UNBONDING, sizeof(action_name) - 1);
+            break;
+        case BBN_POLICY_STAKE_TRANSFER:
+            strncpy(action_name, BBN_POLICY_NAME_STAKE_TRANSFER, sizeof(action_name) - 1);
+            break;
+        case BBN_POLICY_UNBOND:
+            strncpy(action_name, BBN_POLICY_NAME_UNBOND, sizeof(action_name) - 1);
+            break;
+        case BBN_POLICY_WITHDRAW:
+            strncpy(action_name, BBN_POLICY_NAME_WITHDRAW, sizeof(action_name) - 1);
+            break;
+        case BBN_POLICY_BIP322:
+            strncpy(action_name, BBN_POLICY_NAME_BIP322_MESSAGE, sizeof(action_name) - 1);
+            break;
+        default:
+            strncpy(action_name, "Unknown action", sizeof(action_name) - 1);
+            break;
+    }
+    action_name[sizeof(action_name) - 1] = '\0';
+
+    static nbgl_layoutTagValue_t pair;
+    static nbgl_layoutTagValueList_t pairList;
+    pair.item = "Action";
+    pair.value = action_name;
+    pairList.nbMaxLinesForValue = 0;
+    pairList.nbPairs = 1;
+    pairList.pairs = &pair;
+    PRINTF("Reviewing action: %s\n", action_name);
+    nbgl_useCaseReview(TYPE_TRANSACTION,
+                       &pairList,
+                       &ICON_APP_ACTION,
+                       "Review action",
+                       NULL,
+                       "Approve action",
+                       review_choice);
+
+    // blocking call until the user approves or rejects the action
     bool result = io_ui_process(dc);
     if (!result) {
         SEND_SW(dc, SW_DENY);

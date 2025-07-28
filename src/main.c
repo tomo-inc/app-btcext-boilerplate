@@ -25,7 +25,7 @@ static merkleized_map_commitment_t external_input_map;
 static uint8_t external_input_scriptPubKey[P2TR_SCRIPTPUBKEY_LEN];
 
 #define INS_CUSTOM_XOR 0xbb
-#define CHUNK_SIZE 64
+#define CHUNK_SIZE     64
 
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
@@ -397,6 +397,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
         return false;
     }
+    display_actions(dc, 1);
     uint8_t pubkeys[5][65];
     memset(pubkeys, 0, sizeof(pubkeys));
     memset(pubkeys[0], 0x31, 64);
