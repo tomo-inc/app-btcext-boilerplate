@@ -9,7 +9,7 @@
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt/txhashes.h"
 #include "../bitcoin_app_base/src/crypto.h"
-
+#include "bbn_def.h"
 #include "bbn_tlv.h"
 #include "bbn_data.h"
 #include "display.h"
@@ -399,6 +399,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
     display_actions(dc, 1);
     uint8_t pubkeys[9][65];
+    
     memset(pubkeys, 0, sizeof(pubkeys));
     memset(pubkeys[0], 0x31, 64);
     memset(pubkeys[1], 0x32, 64);
@@ -410,7 +411,16 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     memset(pubkeys[7], 0x38, 64);
     memset(pubkeys[8], 0x39, 64);
 
-    if (!display_public_keys(dc, 9, pubkeys, 1)) {
+    if(g_bbn_data.has_fp_list){
+        if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
+        PRINTF("display_public_keys failed\n");
+        return false;
+    }
+    }
+
+    
+
+    if (!display_public_keys(dc, 9, pubkeys, BBN_DIS_PUB_COV, 2)) {
         PRINTF("display_public_keys failed\n");
         return false;
     }

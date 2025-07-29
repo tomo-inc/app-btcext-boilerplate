@@ -41,33 +41,35 @@ static void status_operation_callback(bool confirm) {
     }
 }
 
+
+
 bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
                          uint8_t pubkey[][65],
-                         uint32_t pub_type) {
+                         uint32_t pub_type,
+                         uint32_t quorum) {
     nbgl_layoutTagValue_t pairs[16];
     nbgl_layoutTagValueList_t pairList;
 
-    char hexbuf[16][65];
-    char labels[16][8];
-    int n_pairs = 0;
-    char quorum_value[8];
-    snprintf(quorum_value, sizeof(quorum_value), "%d", 2);                        
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
-    pairs[0].item = "Covenant quorum";
-    pairs[0].value = quorum_value;
-    n_pairs++;                        
 
+    char hexbuf[BBN_MAX_FP_COUNT][65];
+    char labels[BBN_MAX_FP_COUNT][8];
+    char quorum_value[8];
+    int n_pairs = 0;
+
+    if(pub_type == BBN_DIS_PUB_COV){
+        snprintf(quorum_value, sizeof(quorum_value), "%d", 2);                        
+        pairs[n_pairs].item = "Covenant quorum";
+        pairs[n_pairs].value = quorum_value;
+        n_pairs++;   
+    }
+                         
     for (uint32_t i = 0; i < pub_count; i++) {
         memcpy(hexbuf[i], pubkey[i], 64);
         hexbuf[i][64] = '\0';
-        labels[i][0] = 'P';
-        labels[i][1] = 'u';
-        labels[i][2] = 'b';
-        labels[i][3] = ' ';
-        labels[i][4] = '1' + i;
-        labels[i][5] = '\0';
+        snprintf(labels[i], sizeof(labels[i]), "Pub %u", i + 1);
         pairs[n_pairs] = (nbgl_layoutTagValue_t) {
             .item = labels[i],
             .value = hexbuf[i],
@@ -79,20 +81,24 @@ bool display_public_keys(dispatcher_context_t *dc,
     pairList.nbPairs = n_pairs;
     pairList.pairs = pairs;
     PRINTF("Reviewing public keys: %d\n", n_pairs);
-    // nbgl_useCaseReview(TYPE_TRANSACTION,
-    //                    &pairList,
-    //                    &ICON_APP_ACTION,
-    //                    "Review transaction\nBabylon Staking",
-    //                    NULL,
-    //                    "Sign transaction\nFor Babylon Staking",
-    //                    review_choice);
-    nbgl_useCaseReviewLight(TYPE_OPERATION,
+    if(pub_type == BBN_DIS_PUB_COV) {
+         nbgl_useCaseReviewLight(TYPE_OPERATION,
                             &pairList,
                             &ICON_APP_ACTION,
                             "Covenant public keys",
                             NULL,
                             "Confirm covenant\npublic keys",
                             status_operation_callback);
+    }else {
+         nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Finality public keys",
+                            NULL,
+                            "Confirm finality\npublic keys",
+                            status_operation_callback);
+    }
+   
 
     // blocking call until the user approves or rejects the transaction
     bool result = io_ui_process(dc);

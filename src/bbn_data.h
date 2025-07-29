@@ -1,6 +1,8 @@
 #ifndef BBN_DATA_DEF_H
 #define BBN_DATA_DEF_H
 
+#include "bbn_def.h"
+
 #define TAG_ACTION_TYPE         0x77
 #define TAG_FP_COUNT            0xf9
 #define TAG_FP_LIST             0xf8
@@ -21,8 +23,8 @@
 #define ACTION_WITHDRAW           5
 #define ACTION_SIGN_MESSAGE       6
 
-#define MAX_FP_COUNT      10
-#define MAX_COV_KEY_COUNT 15
+#define MAX_FP_COUNT      16
+#define MAX_COV_KEY_COUNT 16
 
 typedef struct {
     // Action Type

@@ -28,6 +28,7 @@ bool display_transaction(dispatcher_context_t *dc,
 bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
                          uint8_t pubkey[][65],
-                         uint32_t pub_type);
+                         uint32_t pub_type,
+                         uint32_t quorum);
 
 bool display_actions(dispatcher_context_t *dc, uint32_t action_type);
