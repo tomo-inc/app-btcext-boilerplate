@@ -251,120 +251,7 @@ static bool validate_transaction(dispatcher_context_t *dc,
 
     return true;
 }
-static bool get_output_script_and_amount(
-    dispatcher_context_t *dc,
-    sign_psbt_state_t *st,
-    size_t output_index,
-    uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-    size_t *out_scriptPubKey_len,
-    uint64_t *out_amount) {
-    if (out_scriptPubKey == NULL || out_amount == NULL) {
-        SEND_SW(dc, SW_BAD_STATE);
-        return false;
-    }
 
-    merkleized_map_commitment_t map;
-
-    // TODO: This might be too slow, as it checks the integrity of the map;
-    //       Refactor so that the map key ordering is checked all at the beginning of sign_psbt.
-    int res = call_get_merkleized_map(dc, st->outputs_root, st->n_outputs, output_index, &map);
-
-    if (res < 0) {
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
-
-    // Read output amount
-    uint8_t raw_result[8];
-
-    // Read the output's amount
-    int result_len = call_get_merkleized_map_value(dc,
-                                                   &map,
-                                                   (uint8_t[]) {PSBT_OUT_AMOUNT},
-                                                   1,
-                                                   raw_result,
-                                                   sizeof(raw_result));
-    if (result_len != 8) {
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
-    uint64_t value = read_u64_le(raw_result, 0);
-    *out_amount = value;
-
-    // Read the output's scriptPubKey
-    result_len = call_get_merkleized_map_value(dc,
-                                               &map,
-                                               (uint8_t[]) {PSBT_OUT_SCRIPT},
-                                               1,
-                                               out_scriptPubKey,
-                                               MAX_OUTPUT_SCRIPTPUBKEY_LEN);
-
-    if (result_len == -1 || result_len > MAX_OUTPUT_SCRIPTPUBKEY_LEN) {
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
-
-    *out_scriptPubKey_len = result_len;
-
-    return true;
-}
-static bool __attribute__((noinline)) display_external_outputs(
-    dispatcher_context_t *dc,
-    sign_psbt_state_t *st,
-    const uint8_t internal_outputs[static BITVECTOR_REAL_SIZE(MAX_N_OUTPUTS_CAN_SIGN)]) {
-    /**
-     *  Display all the non-change outputs
-     */
-
-    LOG_PROCESSOR(__FILE__, __LINE__, __func__);
-
-    // the counter used when showing outputs to the user, which ignores change outputs
-    // (0-indexed here, although the UX starts with 1)
-    int external_outputs_count = 0;
-
-    for (unsigned int cur_output_index = 0; cur_output_index < st->n_outputs; cur_output_index++) {
-        if (!bitvector_get(internal_outputs, cur_output_index)) {
-            // external output, user needs to validate
-            uint8_t out_scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
-            size_t out_scriptPubKey_len;
-            uint64_t out_amount;
-
-            if (external_outputs_count < N_CACHED_EXTERNAL_OUTPUTS) {
-                // we have the output cached, no need to fetch it again
-                out_scriptPubKey_len = st->outputs.output_script_lengths[external_outputs_count];
-                memcpy(out_scriptPubKey,
-                       st->outputs.output_scripts[external_outputs_count],
-                       out_scriptPubKey_len);
-                out_amount = st->outputs.output_amounts[external_outputs_count];
-            } else if (!get_output_script_and_amount(dc,
-                                                     st,
-                                                     cur_output_index,
-                                                     out_scriptPubKey,
-                                                     &out_scriptPubKey_len,
-                                                     &out_amount)) {
-                SEND_SW(dc, SW_INCORRECT_DATA);
-                return false;
-            }
-
-            ++external_outputs_count;
-            PRINTF("out_scriptPubKey (len=%d): ", (int) out_scriptPubKey_len);
-            PRINTF_BUF(out_scriptPubKey, out_scriptPubKey_len);
-            PRINTF("Output amount: %d satoshi\n", (uint32_t) out_amount);
-            // displays the output. It fails if the output is invalid or not supported
-            // if (!display_output(dc,
-            //                     st,
-            //                     cur_output_index,
-            //                     external_outputs_count,
-            //                     out_scriptPubKey,
-            //                     out_scriptPubKey_len,
-            //                     out_amount)) {
-            //     return false;
-            // }
-        }
-    }
-
-    return true;
-}
 
 /**
  * @brief Validates and displays the transaction's Clear Signing UX for user confirmation.
@@ -413,56 +300,57 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         }
     }
 
-    uint64_t total_input_amount = st->inputs_total_amount;
-    uint64_t total_output_amount = st->outputs.total_amount;
-    uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    uint64_t change_amount = st->outputs.change_total_amount;
-    uint64_t external_output_amount = total_output_amount - change_amount;
+    // uint64_t total_input_amount = st->inputs_total_amount;
+    // uint64_t total_output_amount = st->outputs.total_amount;
+    // uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
+    // uint64_t change_amount = st->outputs.change_total_amount;
+    // uint64_t external_output_amount = total_output_amount - change_amount;
 
-    PRINTF("=== PSBT Transaction Summary ===\n");
-    PRINTF("Total Input Amount: %d satoshi\n", (uint32_t) total_input_amount);
-    PRINTF("Total Output Amount: %d satoshi\n", (uint32_t) total_output_amount);
-    PRINTF("Change Amount: %d satoshi\n", (uint32_t) change_amount);
-    PRINTF("External Output Amount: %d satoshi\n", (uint32_t) external_output_amount);
-    PRINTF("Transaction Fee: %d satoshi\n", (uint32_t) fee);
-    PRINTF("Magic Input Value: %d satoshi\n", (uint32_t) magic_input_value);
-    PRINTF("===============================\n");
-    int64_t internal_value = st->internal_inputs_total_amount - st->outputs.change_total_amount;
+    // PRINTF("=== PSBT Transaction Summary ===\n");
+    // PRINTF("Total Input Amount: %d satoshi\n", (uint32_t) total_input_amount);
+    // PRINTF("Total Output Amount: %d satoshi\n", (uint32_t) total_output_amount);
+    // PRINTF("Change Amount: %d satoshi\n", (uint32_t) change_amount);
+    // PRINTF("External Output Amount: %d satoshi\n", (uint32_t) external_output_amount);
+    // PRINTF("Transaction Fee: %d satoshi\n", (uint32_t) fee);
+    // PRINTF("Magic Input Value: %d satoshi\n", (uint32_t) magic_input_value);
+    // PRINTF("===============================\n");
+    // int64_t internal_value = st->internal_inputs_total_amount - st->outputs.change_total_amount;
+    
     if (!display_external_outputs(dc, st, internal_outputs)) {
         PRINTF("display_external_outputs fail \n");
         return false;
     }
-    int first_internal_output_index = -1;
-    for (unsigned int i = 0; i < st->n_outputs; i++) {
-        if (bitvector_get(internal_outputs, i)) {
-            first_internal_output_index = i;
-            break;
-        }
-    }
-    uint64_t first_internal_output_amount;
-    if (first_internal_output_index != -1) {
-        uint8_t scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
-        size_t scriptPubKey_len;
+    // int first_internal_output_index = -1;
+    // for (unsigned int i = 0; i < st->n_outputs; i++) {
+    //     if (bitvector_get(internal_outputs, i)) {
+    //         first_internal_output_index = i;
+    //         break;
+    //     }
+    // }
+    // uint64_t first_internal_output_amount;
+    // if (first_internal_output_index != -1) {
+    //     uint8_t scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
+    //     size_t scriptPubKey_len;
 
-        if (get_output_script_and_amount(dc,
-                                         st,
-                                         first_internal_output_index,
-                                         scriptPubKey,
-                                         &scriptPubKey_len,
-                                         &first_internal_output_amount)) {
-            PRINTF("First internal output amount: %d satoshi\n",
-                   (uint32_t) first_internal_output_amount);
-        } else {
-            PRINTF("Failed to get first internal output amount\n");
-        }
-    } else {
-        PRINTF("No internal output found\n");
-    }
+    //     if (get_output_script_and_amount(dc,
+    //                                      st,
+    //                                      first_internal_output_index,
+    //                                      scriptPubKey,
+    //                                      &scriptPubKey_len,
+    //                                      &first_internal_output_amount)) {
+    //         PRINTF("First internal output amount: %d satoshi\n",
+    //                (uint32_t) first_internal_output_amount);
+    //     } else {
+    //         PRINTF("Failed to get first internal output amount\n");
+    //     }
+    // } else {
+    //     PRINTF("No internal output found\n");
+    // }
 
-    if (!display_transaction(dc, first_internal_output_amount, external_input_scriptPubKey, fee)) {
-        SEND_SW(dc, SW_DENY);
-        return false;
-    }
+    // if (!display_transaction(dc, first_internal_output_amount, external_input_scriptPubKey, fee)) {
+    //     SEND_SW(dc, SW_DENY);
+    //     return false;
+    // }
     PRINTF("!!!!!!!1*****************  display_transaction\n");
     return true;
 }

@@ -1,5 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include "../bitcoin_app_base/src/common/psbt.h"
+#include "../bitcoin_app_base/src/common/bitvector.h"
+#include "../bitcoin_app_base/src/handler/sign_psbt.h"
 #include "bbn_data.h"
 #include "bbn_tlv.h"
 #include "display.h"

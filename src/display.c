@@ -1,9 +1,13 @@
-#include "display.h"
-#include "bbn_def.h"
 #include "../bitcoin_app_base/src/ui/display.h"
 #include "../bitcoin_app_base/src/ui/menu.h"
+#include "../bitcoin_app_base/src/common/psbt.h"
+#include "../bitcoin_app_base/src/common/bitvector.h"
+#include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "io.h"
 #include "nbgl_use_case.h"
+#include "bbn_def.h"
+#include "display.h"
 
 #define MAX_N_PAIRS 4
 static const char *confirmed_status;  // text displayed in confirmation page (after long press)
@@ -134,10 +138,6 @@ bool display_transaction(dispatcher_context_t *dc,
     }
 
     int n_pairs = 0;
-    pairs[n_pairs++] = (nbgl_layoutTagValue_t) {
-        .item = "Transaction type",
-        .value = "Babylon",
-    };
 
     if (value_spent >= 0) {
         pairs[n_pairs++] = (nbgl_layoutTagValue_t) {
@@ -242,5 +242,164 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
         return false;
     }
 
+    return true;
+}
+
+bool __attribute__((noinline)) display_external_outputs(
+    dispatcher_context_t *dc,
+    sign_psbt_state_t *st,
+    const uint8_t internal_outputs[static BITVECTOR_REAL_SIZE(MAX_N_OUTPUTS_CAN_SIGN)]) {
+    /**
+     *  Display all the non-change outputs
+     */
+
+    LOG_PROCESSOR(__FILE__, __LINE__, __func__);
+
+    // the counter used when showing outputs to the user, which ignores change outputs
+    // (0-indexed here, although the UX starts with 1)
+    int external_outputs_count = 0;
+
+    for (unsigned int cur_output_index = 0; cur_output_index < st->n_outputs; cur_output_index++) {
+        if (!bitvector_get(internal_outputs, cur_output_index)) {
+            // external output, user needs to validate
+            uint8_t out_scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
+            size_t out_scriptPubKey_len;
+            uint64_t out_amount;
+
+            if (external_outputs_count < N_CACHED_EXTERNAL_OUTPUTS) {
+                // we have the output cached, no need to fetch it again
+                out_scriptPubKey_len = st->outputs.output_script_lengths[external_outputs_count];
+                memcpy(out_scriptPubKey,
+                       st->outputs.output_scripts[external_outputs_count],
+                       out_scriptPubKey_len);
+                out_amount = st->outputs.output_amounts[external_outputs_count];
+            } else if (!get_output_script_and_amount(dc,
+                                                     st,
+                                                     cur_output_index,
+                                                     out_scriptPubKey,
+                                                     &out_scriptPubKey_len,
+                                                     &out_amount)) {
+                SEND_SW(dc, SW_INCORRECT_DATA);
+                return false;
+            }
+
+            ++external_outputs_count;
+            PRINTF("out_scriptPubKey (len=%d): ", (int) out_scriptPubKey_len);
+            PRINTF_BUF(out_scriptPubKey, out_scriptPubKey_len);
+            PRINTF("Output amount: %d satoshi\n", (uint32_t) out_amount);
+            // displays the output. It fails if the output is invalid or not supported
+            if (!display_output(dc,
+                                st,
+                                cur_output_index,
+                                external_outputs_count,
+                                out_scriptPubKey,
+                                out_scriptPubKey_len,
+                                out_amount)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool get_output_script_and_amount(
+    dispatcher_context_t *dc,
+    sign_psbt_state_t *st,
+    size_t output_index,
+    uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+    size_t *out_scriptPubKey_len,
+    uint64_t *out_amount) {
+    if (out_scriptPubKey == NULL || out_amount == NULL) {
+        SEND_SW(dc, SW_BAD_STATE);
+        return false;
+    }
+
+    merkleized_map_commitment_t map;
+
+    // TODO: This might be too slow, as it checks the integrity of the map;
+    //       Refactor so that the map key ordering is checked all at the beginning of sign_psbt.
+    int res = call_get_merkleized_map(dc, st->outputs_root, st->n_outputs, output_index, &map);
+
+    if (res < 0) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+
+    // Read output amount
+    uint8_t raw_result[8];
+
+    // Read the output's amount
+    int result_len = call_get_merkleized_map_value(dc,
+                                                   &map,
+                                                   (uint8_t[]){PSBT_OUT_AMOUNT},
+                                                   1,
+                                                   raw_result,
+                                                   sizeof(raw_result));
+    if (result_len != 8) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+    uint64_t value = read_u64_le(raw_result, 0);
+    *out_amount = value;
+
+    // Read the output's scriptPubKey
+    result_len = call_get_merkleized_map_value(dc,
+                                               &map,
+                                               (uint8_t[]){PSBT_OUT_SCRIPT},
+                                               1,
+                                               out_scriptPubKey,
+                                               MAX_OUTPUT_SCRIPTPUBKEY_LEN);
+
+    if (result_len == -1 || result_len > MAX_OUTPUT_SCRIPTPUBKEY_LEN) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+
+    *out_scriptPubKey_len = result_len;
+
+    return true;
+}
+
+bool __attribute__((noinline))
+display_output(dispatcher_context_t *dc,
+               sign_psbt_state_t *st,
+               int cur_output_index,
+               int external_outputs_count,
+               const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+               size_t out_scriptPubKey_len,
+               uint64_t out_amount) {
+    (void) cur_output_index;
+
+    // show this output's address
+    char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
+
+    // chester
+    // if it is the sign message in BIP322
+    // to avoid it is mis-used(attacked) for normal transaction
+    // we check amount=0, address=OP_RETURN
+    // if (st->bbn_action_type == BBN_POLICY_BIP322) {
+    //     if (!is_opreturn(out_scriptPubKey, out_scriptPubKey_len) || out_amount != 0) {
+    //         SEND_SW(dc, SW_NOT_SUPPORTED);
+    //         return false;
+    //     }
+    // }
+
+    if (!format_script(out_scriptPubKey, out_scriptPubKey_len, output_description)) {
+        PRINTF("Invalid or unsupported script for output %d\n", cur_output_index);
+        SEND_SW(dc, SW_NOT_SUPPORTED);
+        return false;
+    }
+
+    // Show address to the user
+    if (!ui_validate_output(dc,
+                            external_outputs_count,
+                            st->n_external_outputs,
+                            output_description,
+                            COIN_COINID_SHORT,
+                            out_amount)) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
     return true;
 }
