@@ -45,7 +45,7 @@ bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
                          uint8_t pubkey[][65],
                          uint32_t pub_type) {
-    nbgl_layoutTagValue_t pairs[4];
+    nbgl_layoutTagValue_t pairs[16];
     nbgl_layoutTagValueList_t pairList;
 
     char hexbuf[16][65];

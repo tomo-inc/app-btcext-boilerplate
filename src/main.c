@@ -398,14 +398,19 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         return false;
     }
     display_actions(dc, 1);
-    uint8_t pubkeys[5][65];
+    uint8_t pubkeys[9][65];
     memset(pubkeys, 0, sizeof(pubkeys));
     memset(pubkeys[0], 0x31, 64);
     memset(pubkeys[1], 0x32, 64);
     memset(pubkeys[2], 0x33, 64);
     memset(pubkeys[3], 0x34, 64);
     memset(pubkeys[4], 0x35, 64);
-    if (!display_public_keys(dc, 2, pubkeys, 1)) {
+    memset(pubkeys[5], 0x36, 64);
+    memset(pubkeys[6], 0x37, 64);
+    memset(pubkeys[7], 0x38, 64);
+    memset(pubkeys[8], 0x39, 64);
+
+    if (!display_public_keys(dc, 9, pubkeys, 1)) {
         PRINTF("display_public_keys failed\n");
         return false;
     }
