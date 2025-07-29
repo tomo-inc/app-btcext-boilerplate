@@ -45,7 +45,7 @@ static void status_operation_callback(bool confirm) {
 
 bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
-                         uint8_t pubkey[][65],
+                         uint8_t pubkey[][32],
                          uint32_t pub_type,
                          uint32_t quorum) {
     nbgl_layoutTagValue_t pairs[16];
@@ -60,15 +60,17 @@ bool display_public_keys(dispatcher_context_t *dc,
     int n_pairs = 0;
 
     if(pub_type == BBN_DIS_PUB_COV){
-        snprintf(quorum_value, sizeof(quorum_value), "%d", 2);                        
+        snprintf(quorum_value, sizeof(quorum_value), "%d", quorum);                        
         pairs[n_pairs].item = "Covenant quorum";
         pairs[n_pairs].value = quorum_value;
         n_pairs++;   
     }
                          
     for (uint32_t i = 0; i < pub_count; i++) {
-        memcpy(hexbuf[i], pubkey[i], 64);
-        hexbuf[i][64] = '\0';
+         for (uint32_t j = 0; j < 32; j++) { // 假设每个 pubkey 是 32 字节
+            snprintf(&hexbuf[i][j * 2], 3, "%02X", pubkey[i][j]);
+        }
+        hexbuf[i][64] = '\0'; // 确保字符串以 null 结尾
         snprintf(labels[i], sizeof(labels[i]), "Pub %u", i + 1);
         pairs[n_pairs] = (nbgl_layoutTagValue_t) {
             .item = labels[i],

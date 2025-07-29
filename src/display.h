@@ -27,7 +27,7 @@ bool display_transaction(dispatcher_context_t *dc,
                          uint64_t fee);
 bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
-                         uint8_t pubkey[][65],
+                         uint8_t pubkey[][32],
                          uint32_t pub_type,
                          uint32_t quorum);
 

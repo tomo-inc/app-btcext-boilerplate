@@ -1,8 +1,6 @@
 #ifndef BBN_DATA_DEF_H
 #define BBN_DATA_DEF_H
 
-#include "bbn_def.h"
-
 #define TAG_ACTION_TYPE         0x77
 #define TAG_FP_COUNT            0xf9
 #define TAG_FP_LIST             0xf8

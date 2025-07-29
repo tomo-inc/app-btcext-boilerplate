@@ -398,31 +398,19 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         return false;
     }
     display_actions(dc, 1);
-    uint8_t pubkeys[9][65];
-    
-    memset(pubkeys, 0, sizeof(pubkeys));
-    memset(pubkeys[0], 0x31, 64);
-    memset(pubkeys[1], 0x32, 64);
-    memset(pubkeys[2], 0x33, 64);
-    memset(pubkeys[3], 0x34, 64);
-    memset(pubkeys[4], 0x35, 64);
-    memset(pubkeys[5], 0x36, 64);
-    memset(pubkeys[6], 0x37, 64);
-    memset(pubkeys[7], 0x38, 64);
-    memset(pubkeys[8], 0x39, 64);
 
     if(g_bbn_data.has_fp_list){
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
-        PRINTF("display_public_keys failed\n");
-        return false;
-    }
+            PRINTF("display_public_keys failed\n");
+            return false;
+        }
     }
 
-    
-
-    if (!display_public_keys(dc, 9, pubkeys, BBN_DIS_PUB_COV, 2)) {
-        PRINTF("display_public_keys failed\n");
-        return false;
+    if(g_bbn_data.has_cov_key_list){
+        if (!display_public_keys(dc, g_bbn_data.cov_key_count, g_bbn_data.cov_key_list, BBN_DIS_PUB_COV, g_bbn_data.cov_quorum)) {
+            PRINTF("display_public_keys failed\n");
+            return false;
+        }
     }
 
     uint64_t total_input_amount = st->inputs_total_amount;
