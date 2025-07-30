@@ -8,8 +8,7 @@
 #define TAG_COV_KEY_LIST        0xc1
 #define TAG_STAKER_PK           0x51
 #define TAG_COV_QUORUM          0x01
-#define TAG_STAKE_TIMELOCK      0x71
-#define TAG_UNBONDING_TIMELOCK  0x72
+#define TAG_TIMELOCK            0x71
 #define TAG_SLASHING_FEE_LIMIT  0xfe
 #define TAG_UNBONDING_FEE_LIMIT 0xff
 
@@ -50,10 +49,8 @@ typedef struct {
     uint8_t cov_quorum;
 
     // Timelocks
-    bool has_stake_timelock;
-    uint64_t stake_timelock;
-    bool has_unbonding_timelock;
-    uint64_t unbonding_timelock;
+    bool has_timelock;
+    uint64_t timelock;
 
     // Fee Limits
     bool has_slashing_fee_limit;

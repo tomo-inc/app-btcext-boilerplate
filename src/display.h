@@ -53,3 +53,5 @@ bool __attribute__((noinline)) display_output(
     const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
     size_t out_scriptPubKey_len,
     uint64_t out_amount);
+
+bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock);

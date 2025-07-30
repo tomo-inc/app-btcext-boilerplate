@@ -399,3 +399,39 @@ bool __attribute__((noinline)) display_output(
     }
     return true;
 }
+
+bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
+    nbgl_layoutTagValue_t pairs[16];
+    nbgl_layoutTagValueList_t pairList;
+
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+
+    char timelock_value[8];
+    snprintf(timelock_value, sizeof(timelock_value), "%d", time_lock);
+    pairs[0] = (nbgl_layoutTagValue_t) {
+        .item = "Timelock",
+        .value = timelock_value,
+    };
+
+    pairList.nbMaxLinesForValue = 0;
+    pairList.nbPairs = 1;
+    pairList.pairs = pairs;
+    PRINTF("display_timelock: %d\n", time_lock);
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Timelock",
+                            NULL,
+                            "Confirm timelock",
+                            status_operation_callback);
+
+    // blocking call until the user approves or rejects the transaction
+    bool result = io_ui_process(dc);
+    if (!result) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+
+    return true;
+}

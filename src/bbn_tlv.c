@@ -3,6 +3,7 @@
 #include "../bitcoin_app_base/src/common/psbt.h"
 #include "../bitcoin_app_base/src/common/bitvector.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "../bitcoin_app_base/src/common/read.h"
 #include "bbn_data.h"
 #include "bbn_tlv.h"
 #include "display.h"
@@ -54,13 +55,6 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
             case TAG_ACTION_TYPE:
                 PRINTF("  -> Action Type\n");
                 if (length >= 1 && value != NULL) {
-                    const char *action_names[] = {"UNKNOWN",
-                                                  "STAKING",
-                                                  "UNBOND",
-                                                  "SLASHING",
-                                                  "UNBONDING_SLASHING",
-                                                  "WITHDRAW",
-                                                  "SIGN_MESSAGE"};
                     uint8_t action = value[0];
 
                     // 存储到全局变量
@@ -152,36 +146,23 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
                 }
                 break;
 
-            case TAG_STAKE_TIMELOCK:
+            case TAG_TIMELOCK:
                 if (length == 8) {
-                    uint64_t timelock = read_u64_le(value, 0);
-                    PRINTF("  -> Stake Timelock: %lld\n", timelock);
+                    uint64_t timelock = read_u64_be(value, 0);
+                    PRINTF("  -> Timelock: %d\n", (uint32_t) timelock);
 
                     // 存储到全局变量
-                    g_bbn_data.has_stake_timelock = true;
-                    g_bbn_data.stake_timelock = timelock;
+                    g_bbn_data.has_timelock = true;
+                    g_bbn_data.timelock = timelock;
                 } else {
-                    PRINTF("  -> Invalid Stake Timelock length\n");
-                }
-                break;
-
-            case TAG_UNBONDING_TIMELOCK:
-                if (length == 8) {
-                    uint64_t timelock = read_u64_le(value, 0);
-                    PRINTF("  -> Unbonding Timelock: %lld\n", timelock);
-
-                    // 存储到全局变量
-                    g_bbn_data.has_unbonding_timelock = true;
-                    g_bbn_data.unbonding_timelock = timelock;
-                } else {
-                    PRINTF("  -> Invalid Unbonding Timelock length\n");
+                    PRINTF("  -> Invalid Timelock length\n");
                 }
                 break;
 
             case TAG_SLASHING_FEE_LIMIT:
                 if (length == 8) {
-                    uint64_t limit = read_u64_le(value, 0);
-                    PRINTF("  -> Slashing Fee Limit: %lld satoshi\n", limit);
+                    uint64_t limit = read_u64_be(value, 0);
+                    PRINTF("  -> Slashing Fee Limit: %d satoshi\n", (uint32_t) limit);
 
                     // 存储到全局变量
                     g_bbn_data.has_slashing_fee_limit = true;
@@ -193,8 +174,8 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
 
             case TAG_UNBONDING_FEE_LIMIT:
                 if (length == 8) {
-                    uint64_t limit = read_u64_le(value, 0);
-                    PRINTF("  -> Unbonding Fee Limit: %lld satoshi\n", limit);
+                    uint64_t limit = read_u64_be(value, 0);
+                    PRINTF("  -> Unbonding Fee Limit: %d satoshi\n", (uint32_t) limit);
 
                     // 存储到全局变量
                     g_bbn_data.has_unbonding_fee_limit = true;
