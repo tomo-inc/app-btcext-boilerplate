@@ -252,7 +252,6 @@ static bool validate_transaction(dispatcher_context_t *dc,
     return true;
 }
 
-
 /**
  * @brief Validates and displays the transaction's Clear Signing UX for user confirmation.
  *
@@ -286,72 +285,39 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
     display_actions(dc, 1);
 
-    if(g_bbn_data.has_fp_list){
+    if (g_bbn_data.has_fp_list) {
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
             PRINTF("display_public_keys failed\n");
             return false;
         }
     }
 
-    if(g_bbn_data.has_cov_key_list){
-        if (!display_public_keys(dc, g_bbn_data.cov_key_count, g_bbn_data.cov_key_list, BBN_DIS_PUB_COV, g_bbn_data.cov_quorum)) {
+    if (g_bbn_data.has_cov_key_list) {
+        if (!display_public_keys(dc,
+                                 g_bbn_data.cov_key_count,
+                                 g_bbn_data.cov_key_list,
+                                 BBN_DIS_PUB_COV,
+                                 g_bbn_data.cov_quorum)) {
             PRINTF("display_public_keys failed\n");
             return false;
         }
     }
 
-    // uint64_t total_input_amount = st->inputs_total_amount;
-    // uint64_t total_output_amount = st->outputs.total_amount;
-    // uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    // uint64_t change_amount = st->outputs.change_total_amount;
-    // uint64_t external_output_amount = total_output_amount - change_amount;
-
-    // PRINTF("=== PSBT Transaction Summary ===\n");
-    // PRINTF("Total Input Amount: %d satoshi\n", (uint32_t) total_input_amount);
-    // PRINTF("Total Output Amount: %d satoshi\n", (uint32_t) total_output_amount);
-    // PRINTF("Change Amount: %d satoshi\n", (uint32_t) change_amount);
-    // PRINTF("External Output Amount: %d satoshi\n", (uint32_t) external_output_amount);
-    // PRINTF("Transaction Fee: %d satoshi\n", (uint32_t) fee);
-    // PRINTF("Magic Input Value: %d satoshi\n", (uint32_t) magic_input_value);
-    // PRINTF("===============================\n");
-    // int64_t internal_value = st->internal_inputs_total_amount - st->outputs.change_total_amount;
-    
     if (!display_external_outputs(dc, st, internal_outputs)) {
         PRINTF("display_external_outputs fail \n");
         return false;
     }
-    // int first_internal_output_index = -1;
-    // for (unsigned int i = 0; i < st->n_outputs; i++) {
-    //     if (bitvector_get(internal_outputs, i)) {
-    //         first_internal_output_index = i;
-    //         break;
-    //     }
-    // }
-    // uint64_t first_internal_output_amount;
-    // if (first_internal_output_index != -1) {
-    //     uint8_t scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
-    //     size_t scriptPubKey_len;
-
-    //     if (get_output_script_and_amount(dc,
-    //                                      st,
-    //                                      first_internal_output_index,
-    //                                      scriptPubKey,
-    //                                      &scriptPubKey_len,
-    //                                      &first_internal_output_amount)) {
-    //         PRINTF("First internal output amount: %d satoshi\n",
-    //                (uint32_t) first_internal_output_amount);
-    //     } else {
-    //         PRINTF("Failed to get first internal output amount\n");
-    //     }
-    // } else {
-    //     PRINTF("No internal output found\n");
-    // }
-
-    // if (!display_transaction(dc, first_internal_output_amount, external_input_scriptPubKey, fee)) {
-    //     SEND_SW(dc, SW_DENY);
-    //     return false;
-    // }
-    PRINTF("!!!!!!!1*****************  display_transaction\n");
+    if (st->warnings.high_fee && !ui_warn_high_fee(dc)) {
+        PRINTF("ui_warn_high_fee fail \n");
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+    uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
+    if (!ui_validate_transaction(dc, COIN_COINID_SHORT, fee, false)) {
+        PRINTF("ui_validate_transaction fail \n");
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
     return true;
 }
 

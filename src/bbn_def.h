@@ -55,5 +55,5 @@ typedef enum {
 #define BBN_DIS_PUB_FP  1
 #define BBN_DIS_PUB_COV 2
 
-#define BBN_MAX_FP_COUNT 16
+#define BBN_MAX_FP_COUNT  16
 #define BBN_MAX_COV_COUNT 16

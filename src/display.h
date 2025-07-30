@@ -38,19 +38,18 @@ bool __attribute__((noinline)) display_external_outputs(
     sign_psbt_state_t *st,
     const uint8_t internal_outputs[static BITVECTOR_REAL_SIZE(MAX_N_OUTPUTS_CAN_SIGN)]);
 
-bool get_output_script_and_amount(
+bool get_output_script_and_amount(dispatcher_context_t *dc,
+                                  sign_psbt_state_t *st,
+                                  size_t output_index,
+                                  uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+                                  size_t *out_scriptPubKey_len,
+                                  uint64_t *out_amount);
+
+bool __attribute__((noinline)) display_output(
     dispatcher_context_t *dc,
     sign_psbt_state_t *st,
-    size_t output_index,
-    uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-    size_t *out_scriptPubKey_len,
-    uint64_t *out_amount);
-
-bool __attribute__((noinline))
-display_output(dispatcher_context_t *dc,
-               sign_psbt_state_t *st,
-               int cur_output_index,
-               int external_outputs_count,
-               const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-               size_t out_scriptPubKey_len,
-               uint64_t out_amount);
+    int cur_output_index,
+    int external_outputs_count,
+    const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+    size_t out_scriptPubKey_len,
+    uint64_t out_amount);

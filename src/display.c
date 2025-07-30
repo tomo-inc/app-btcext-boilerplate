@@ -45,8 +45,6 @@ static void status_operation_callback(bool confirm) {
     }
 }
 
-
-
 bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
                          uint8_t pubkey[][32],
@@ -63,18 +61,18 @@ bool display_public_keys(dispatcher_context_t *dc,
     char quorum_value[8];
     int n_pairs = 0;
 
-    if(pub_type == BBN_DIS_PUB_COV){
-        snprintf(quorum_value, sizeof(quorum_value), "%d", quorum);                        
+    if (pub_type == BBN_DIS_PUB_COV) {
+        snprintf(quorum_value, sizeof(quorum_value), "%d", quorum);
         pairs[n_pairs].item = "Covenant quorum";
         pairs[n_pairs].value = quorum_value;
-        n_pairs++;   
+        n_pairs++;
     }
-                         
+
     for (uint32_t i = 0; i < pub_count; i++) {
-         for (uint32_t j = 0; j < 32; j++) { // 假设每个 pubkey 是 32 字节
+        for (uint32_t j = 0; j < 32; j++) {  // 假设每个 pubkey 是 32 字节
             snprintf(&hexbuf[i][j * 2], 3, "%02X", pubkey[i][j]);
         }
-        hexbuf[i][64] = '\0'; // 确保字符串以 null 结尾
+        hexbuf[i][64] = '\0';  // 确保字符串以 null 结尾
         snprintf(labels[i], sizeof(labels[i]), "Pub %u", i + 1);
         pairs[n_pairs] = (nbgl_layoutTagValue_t) {
             .item = labels[i],
@@ -87,24 +85,23 @@ bool display_public_keys(dispatcher_context_t *dc,
     pairList.nbPairs = n_pairs;
     pairList.pairs = pairs;
     PRINTF("Reviewing public keys: %d\n", n_pairs);
-    if(pub_type == BBN_DIS_PUB_COV) {
-         nbgl_useCaseReviewLight(TYPE_OPERATION,
-                            &pairList,
-                            &ICON_APP_ACTION,
-                            "Covenant public keys",
-                            NULL,
-                            "Confirm covenant\npublic keys",
-                            status_operation_callback);
-    }else {
-         nbgl_useCaseReviewLight(TYPE_OPERATION,
-                            &pairList,
-                            &ICON_APP_ACTION,
-                            "Finality public keys",
-                            NULL,
-                            "Confirm finality\npublic keys",
-                            status_operation_callback);
+    if (pub_type == BBN_DIS_PUB_COV) {
+        nbgl_useCaseReviewLight(TYPE_OPERATION,
+                                &pairList,
+                                &ICON_APP_ACTION,
+                                "Covenant public keys",
+                                NULL,
+                                "Confirm covenant\npublic keys",
+                                status_operation_callback);
+    } else {
+        nbgl_useCaseReviewLight(TYPE_OPERATION,
+                                &pairList,
+                                &ICON_APP_ACTION,
+                                "Finality public keys",
+                                NULL,
+                                "Confirm finality\npublic keys",
+                                status_operation_callback);
     }
-   
 
     // blocking call until the user approves or rejects the transaction
     bool result = io_ui_process(dc);
@@ -191,7 +188,7 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
     rejected_status = "Action rejected";
     static char action_name[64];
     static char action_name_approve[64];
-    switch ((bbn_action_type_t)action_type) {
+    switch ((bbn_action_type_t) action_type) {
         case BBN_POLICY_SLASHING:
             strncpy(action_name, BBN_POLICY_NAME_SLASHING, sizeof(action_name) - 1);
             break;
@@ -228,12 +225,12 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
     pairList.pairs = &pair;
     PRINTF("Reviewing action: %s\n", action_name);
     nbgl_useCaseReviewLight(TYPE_OPERATION,
-                       &pairList,
-                       &ICON_APP_ACTION,
-                       "Babylon action",
-                       NULL,
-                       action_name_approve,
-                       status_operation_callback);
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Babylon action",
+                            NULL,
+                            action_name_approve,
+                            status_operation_callback);
 
     // blocking call until the user approves or rejects the action
     bool result = io_ui_process(dc);
@@ -303,13 +300,12 @@ bool __attribute__((noinline)) display_external_outputs(
     return true;
 }
 
-bool get_output_script_and_amount(
-    dispatcher_context_t *dc,
-    sign_psbt_state_t *st,
-    size_t output_index,
-    uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-    size_t *out_scriptPubKey_len,
-    uint64_t *out_amount) {
+bool get_output_script_and_amount(dispatcher_context_t *dc,
+                                  sign_psbt_state_t *st,
+                                  size_t output_index,
+                                  uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+                                  size_t *out_scriptPubKey_len,
+                                  uint64_t *out_amount) {
     if (out_scriptPubKey == NULL || out_amount == NULL) {
         SEND_SW(dc, SW_BAD_STATE);
         return false;
@@ -332,7 +328,7 @@ bool get_output_script_and_amount(
     // Read the output's amount
     int result_len = call_get_merkleized_map_value(dc,
                                                    &map,
-                                                   (uint8_t[]){PSBT_OUT_AMOUNT},
+                                                   (uint8_t[]) {PSBT_OUT_AMOUNT},
                                                    1,
                                                    raw_result,
                                                    sizeof(raw_result));
@@ -346,7 +342,7 @@ bool get_output_script_and_amount(
     // Read the output's scriptPubKey
     result_len = call_get_merkleized_map_value(dc,
                                                &map,
-                                               (uint8_t[]){PSBT_OUT_SCRIPT},
+                                               (uint8_t[]) {PSBT_OUT_SCRIPT},
                                                1,
                                                out_scriptPubKey,
                                                MAX_OUTPUT_SCRIPTPUBKEY_LEN);
@@ -361,14 +357,14 @@ bool get_output_script_and_amount(
     return true;
 }
 
-bool __attribute__((noinline))
-display_output(dispatcher_context_t *dc,
-               sign_psbt_state_t *st,
-               int cur_output_index,
-               int external_outputs_count,
-               const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-               size_t out_scriptPubKey_len,
-               uint64_t out_amount) {
+bool __attribute__((noinline)) display_output(
+    dispatcher_context_t *dc,
+    sign_psbt_state_t *st,
+    int cur_output_index,
+    int external_outputs_count,
+    const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+    size_t out_scriptPubKey_len,
+    uint64_t out_amount) {
     (void) cur_output_index;
 
     // show this output's address
