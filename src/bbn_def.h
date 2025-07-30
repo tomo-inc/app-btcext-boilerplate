@@ -1,3 +1,6 @@
+#ifndef BBN_DEF_H
+#define BBN_DEF_H
+
 #define BBN_POLICY_NAME_SLASHING           "Consent to slashing"
 #define BBN_POLICY_NAME_SLASHING_UNBONDING "Consent to unbonding slashing"
 #define BBN_POLICY_NAME_STAKE_TRANSFER     "Staking transaction"
@@ -57,3 +60,5 @@ typedef enum {
 
 #define BBN_MAX_FP_COUNT  16
 #define BBN_MAX_COV_COUNT 16
+
+#endif  // BBN_DEF_H

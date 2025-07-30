@@ -1,0 +1,186 @@
+
+#include <stdbool.h>
+#include <inttypes.h>
+#include "../bitcoin_app_base/src/crypto.h"
+#include "bbn_script.h"
+
+static const uint8_t BIP0341_sighash_tag[] = {'T', 'a', 'p', 'S', 'i', 'g', 'h', 'a', 's', 'h'};
+static const uint8_t BIP0322_msghash_tag[] = {'B', 'I', 'P', '0', '3', '2', '2', '-',
+                                              's', 'i', 'g', 'n', 'e', 'd', '-', 'm',
+                                              'e', 's', 's', 'a', 'g', 'e'};
+
+static void bbn_leafhash_compute(uint8_t *tapscript, int tapscript_len, uint8_t *leafhash) {
+    cx_sha256_t hash_context;
+    crypto_tr_tapleaf_hash_init(&hash_context);
+    crypto_hash_update_u8(&hash_context.header, 0xC0);
+    crypto_hash_update_varint(&hash_context.header, tapscript_len);
+    crypto_hash_update(&hash_context.header, tapscript, tapscript_len);
+    crypto_hash_digest(&hash_context.header, leafhash, 32);
+}
+
+static int encode_minimal_push(uint32_t value, uint8_t *buffer) {
+    if (value == 0) {
+        buffer[0] = 0x00;
+        return 1;
+    }
+
+    if (value >= 1 && value <= 15) {
+        buffer[0] = 0x50 + value;
+        return 1;
+    }
+
+    int size = 0;
+    int is_negative = (value < 0);
+    uint32_t abs_value = (is_negative) ? -value : value;
+
+    while (abs_value) {
+        buffer[size++] = abs_value & 0xFF;
+        abs_value >>= 8;
+    }
+
+    if (buffer[size - 1] & 0x80) {
+        buffer[size++] = is_negative ? 0x80 : 0x00;
+    } else if (is_negative) {
+        buffer[size - 1] |= 0x80;
+    }
+
+    return size;
+}
+
+void compute_bbn_leafhash_slasing(uint8_t *leafhash) {
+    uint8_t tapscript[1024] = {0};
+    int offset = 0;
+
+    tapscript[offset++] = 0x20;
+    memcpy(tapscript + offset, st->psbt_staker_pk, 32);
+    offset += 32;
+    tapscript[offset++] = 0xad;
+    tapscript[offset++] = 0x20;
+    memcpy(tapscript + offset, st->psbt_finality_pk, 32);
+    offset += 32;
+    tapscript[offset++] = 0xad;
+
+    unsigned int cov_count = count_psbt_covenant_pk_state(st->psbt_covenant_pk_state);
+    if (cov_count < 3) {
+        return;
+    } else {
+        if (st->bbn_action_type == BBN_POLICY_SLASHING ||
+            st->bbn_action_type == BBN_POLICY_SLASHING_UNBONDING)
+            cov_count = cov_count - 2;
+        if (st->bbn_action_type == BBN_POLICY_UNBOND) cov_count = cov_count - 1;
+    }
+    for (unsigned int i = 0; i < cov_count; i++) {
+        tapscript[offset++] = 0x20;
+        memcpy(tapscript + offset, st->psbt_covenant_pk[i], 32);
+        offset += 32;
+        if (i == 0)
+            tapscript[offset++] = 0xac;
+        else
+            tapscript[offset++] = 0xba;
+    }
+
+    tapscript[offset++] = 0x50 + st->psbt_quorum;
+    tapscript[offset++] = 0x9c;
+
+    // Compute leaf hash
+    bbn_leafhash_compute(tapscript, offset, leafhash);
+}
+
+void compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
+    uint8_t tapscript[1024] = {0};
+    int offset = 0;
+
+    tapscript[offset++] = 0x20;
+    memcpy(tapscript + offset, st->psbt_staker_pk, 32);
+    offset += 32;
+    tapscript[offset++] = 0xad;
+
+    unsigned int cov_count = count_psbt_covenant_pk_state(st->psbt_covenant_pk_state);
+    if (cov_count < 2) {
+        return;
+    } else {
+        if (st->bbn_action_type != BBN_POLICY_STAKE_TRANSFER) cov_count = cov_count - 1;
+    }
+    for (unsigned int i = 0; i < cov_count; i++) {
+        tapscript[offset++] = 0x20;
+        memcpy(tapscript + offset, st->psbt_covenant_pk[i], 32);
+        offset += 32;
+        if (i == 0)
+            tapscript[offset++] = 0xac;
+        else
+            tapscript[offset++] = 0xba;
+    }
+
+    tapscript[offset++] = 0x50 + st->psbt_quorum;
+    tapscript[offset++] = 0x9c;
+
+    // Compute leaf hash
+    bbn_leafhash_compute(tapscript, offset, leafhash);
+}
+
+void compute_bbn_leafhash_timelock(uint8_t *leafhash) {
+    uint8_t tapscript[1024] = {0};
+    int offset = 0;
+
+    tapscript[offset++] = 0x20;
+    memcpy(tapscript + offset, st->psbt_staker_pk, 32);
+    offset += 32;
+    tapscript[offset++] = 0xad;
+
+    uint8_t value_buffer[4];
+    int len = encode_minimal_push(st->psbt_timelock, value_buffer);
+    if (st->psbt_timelock > 15) tapscript[offset++] = len;
+    memcpy(tapscript + offset, value_buffer, len);
+    offset += len;
+    tapscript[offset++] = 0xb2;
+
+    bbn_leafhash_compute(tapscript, offset, leafhash);
+}
+
+void compute_bbn_merkle_root(uint8_t *roothash) {
+    uint8_t slashing_leafhash[32];
+    uint8_t unbonding_leafhash[32];
+    uint8_t timelock_leafhash[32];
+
+    compute_bbn_leafhash_slasing(slashing_leafhash);
+    compute_bbn_leafhash_unbonding(unbonding_leafhash);
+    compute_bbn_leafhash_timelock(timelock_leafhash);
+
+    uint8_t branch_hash[32];
+    crypto_tr_combine_taptree_hashes(unbonding_leafhash, timelock_leafhash, branch_hash);
+
+    crypto_tr_combine_taptree_hashes(slashing_leafhash, branch_hash, roothash);
+}
+
+void compute_bip322_txid_by_message(const uint8_t *message,
+                                    size_t message_len,
+                                    const uint8_t *tappub,
+                                    uint8_t *txid_out) {
+    uint8_t tx[] = {TX_PREFIX, TX_DUMMY_TXID, TX_MIDFIX, TX_DUMMY_TXID, TX_SUFFIX};
+    cx_sha256_t sighash_context, txhash_context, txid_context;
+    uint8_t hash[32];
+    uint8_t converted_5bit[32 * 2] = {0};
+    size_t datalen = 0;
+    char converted_message[32 * 4] = {0};
+
+    crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
+
+    convert_bits(converted_5bit, &datalen, 5, message, message_len, 8, 1);
+    bech32_encode(converted_message,
+                  (const char *) "bbn",
+                  converted_5bit,
+                  datalen,
+                  BECH32_ENCODING_BECH32);  // bech32 encode the message
+    crypto_hash_update(&sighash_context.header, converted_message, strlen(converted_message));
+    crypto_hash_digest(&sighash_context.header, hash, 32);
+
+    memcpy(tx + OFFSET_MSG_HASH, hash, 32);
+    memcpy(tx + OFFSET_PUBKEY, tappub, 32);
+
+    cx_sha256_init(&txhash_context);
+    crypto_hash_update(&txhash_context.header, tx, sizeof(tx));
+    crypto_hash_digest(&txhash_context.header, hash, 32);
+    cx_sha256_init(&txid_context);
+    crypto_hash_update(&txid_context.header, hash, 32);
+    crypto_hash_digest(&txid_context.header, txid_out, 32);
+}
