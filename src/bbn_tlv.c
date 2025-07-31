@@ -4,6 +4,7 @@
 #include "../bitcoin_app_base/src/common/bitvector.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
 #include "../bitcoin_app_base/src/common/read.h"
+#include "bbn_def.h"
 #include "bbn_data.h"
 #include "bbn_tlv.h"
 #include "display.h"

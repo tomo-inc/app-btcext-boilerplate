@@ -1,13 +1,45 @@
 
 #include <stdbool.h>
 #include <inttypes.h>
+#include <stddef.h>
+#include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/crypto.h"
+#include "bbn_def.h"
+#include "bbn_data.h"
 #include "bbn_script.h"
 
 static const uint8_t BIP0341_sighash_tag[] = {'T', 'a', 'p', 'S', 'i', 'g', 'h', 'a', 's', 'h'};
 static const uint8_t BIP0322_msghash_tag[] = {'B', 'I', 'P', '0', '3', '2', '2', '-',
                                               's', 'i', 'g', 'n', 'e', 'd', '-', 'm',
                                               'e', 's', 's', 'a', 'g', 'e'};
+
+int bbn_convert_bits(uint8_t *out,
+                     size_t *outlen,
+                     int outbits,
+                     const uint8_t *in,
+                     size_t inlen,
+                     int inbits,
+                     int pad) {
+    uint32_t val = 0;
+    int bits = 0;
+    uint32_t maxv = (((uint32_t) 1) << outbits) - 1;
+    while (inlen--) {
+        val = (val << inbits) | *(in++);
+        bits += inbits;
+        while (bits >= outbits) {
+            bits -= outbits;
+            out[(*outlen)++] = (val >> bits) & maxv;
+        }
+    }
+    if (pad) {
+        if (bits) {
+            out[(*outlen)++] = (val << (outbits - bits)) & maxv;
+        }
+    } else if (((val << (outbits - bits)) & maxv) || bits >= inbits) {
+        return 0;
+    }
+    return 1;
+}
 
 static void bbn_leafhash_compute(uint8_t *tapscript, int tapscript_len, uint8_t *leafhash) {
     cx_sha256_t hash_context;
@@ -47,97 +79,128 @@ static int encode_minimal_push(uint32_t value, uint8_t *buffer) {
     return size;
 }
 
-void compute_bbn_leafhash_slasing(uint8_t *leafhash) {
+bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
     tapscript[offset++] = 0x20;
-    memcpy(tapscript + offset, st->psbt_staker_pk, 32);
+    if (g_bbn_data.has_staker_pk)
+        memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
+    else
+        return false;
+
     offset += 32;
     tapscript[offset++] = 0xad;
     tapscript[offset++] = 0x20;
-    memcpy(tapscript + offset, st->psbt_finality_pk, 32);
-    offset += 32;
-    tapscript[offset++] = 0xad;
-
-    unsigned int cov_count = count_psbt_covenant_pk_state(st->psbt_covenant_pk_state);
-    if (cov_count < 3) {
-        return;
+    if (g_bbn_data.has_fp_list) {
+        if (g_bbn_data.fp_count > MAX_FP_COUNT) {
+            return false;
+        }
+        for (int i = 0; i < g_bbn_data.fp_count; i++) {
+            memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
+            offset += 32;
+        }
     } else {
-        if (st->bbn_action_type == BBN_POLICY_SLASHING ||
-            st->bbn_action_type == BBN_POLICY_SLASHING_UNBONDING)
-            cov_count = cov_count - 2;
-        if (st->bbn_action_type == BBN_POLICY_UNBOND) cov_count = cov_count - 1;
+        return false;
     }
-    for (unsigned int i = 0; i < cov_count; i++) {
-        tapscript[offset++] = 0x20;
-        memcpy(tapscript + offset, st->psbt_covenant_pk[i], 32);
-        offset += 32;
-        if (i == 0)
-            tapscript[offset++] = 0xac;
-        else
-            tapscript[offset++] = 0xba;
+    if (g_bbn_data.has_cov_key_list) {
+        if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
+            return false;
+        }
+        for (int i = 0; i < g_bbn_data.cov_key_count; i++) {
+            tapscript[offset++] = 0x20;
+            memcpy(tapscript + offset, g_bbn_data.cov_key_list[i], 32);
+            offset += 32;
+            if (i == 0)
+                tapscript[offset++] = 0xac;
+            else
+                tapscript[offset++] = 0xba;
+        }
+    } else {
+        return false;
     }
+    if (g_bbn_data.has_cov_quorum)
+        tapscript[offset++] = 0x50 + g_bbn_data.cov_quorum;
+    else
+        return false;
 
-    tapscript[offset++] = 0x50 + st->psbt_quorum;
     tapscript[offset++] = 0x9c;
 
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
+    return true;
 }
 
-void compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
+bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
     tapscript[offset++] = 0x20;
-    memcpy(tapscript + offset, st->psbt_staker_pk, 32);
+    if (g_bbn_data.has_staker_pk)
+        memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
+    else
+        return false;
+
     offset += 32;
     tapscript[offset++] = 0xad;
 
-    unsigned int cov_count = count_psbt_covenant_pk_state(st->psbt_covenant_pk_state);
-    if (cov_count < 2) {
-        return;
+    if (g_bbn_data.has_cov_key_list) {
+        if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
+            return false;
+        }
+        for (int i = 0; i < g_bbn_data.cov_key_count; i++) {
+            tapscript[offset++] = 0x20;
+            memcpy(tapscript + offset, g_bbn_data.cov_key_list[i], 32);
+            offset += 32;
+            if (i == 0)
+                tapscript[offset++] = 0xac;
+            else
+                tapscript[offset++] = 0xba;
+        }
     } else {
-        if (st->bbn_action_type != BBN_POLICY_STAKE_TRANSFER) cov_count = cov_count - 1;
+        return false;
     }
-    for (unsigned int i = 0; i < cov_count; i++) {
-        tapscript[offset++] = 0x20;
-        memcpy(tapscript + offset, st->psbt_covenant_pk[i], 32);
-        offset += 32;
-        if (i == 0)
-            tapscript[offset++] = 0xac;
-        else
-            tapscript[offset++] = 0xba;
-    }
+    if (g_bbn_data.has_cov_quorum)
+        tapscript[offset++] = 0x50 + g_bbn_data.cov_quorum;
+    else
+        return false;
 
-    tapscript[offset++] = 0x50 + st->psbt_quorum;
     tapscript[offset++] = 0x9c;
 
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
+    return true;
 }
 
-void compute_bbn_leafhash_timelock(uint8_t *leafhash) {
+bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
     tapscript[offset++] = 0x20;
-    memcpy(tapscript + offset, st->psbt_staker_pk, 32);
+    if (g_bbn_data.has_staker_pk)
+        memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
+    else
+        return false;
+
     offset += 32;
     tapscript[offset++] = 0xad;
 
     uint8_t value_buffer[4];
-    int len = encode_minimal_push(st->psbt_timelock, value_buffer);
-    if (st->psbt_timelock > 15) tapscript[offset++] = len;
-    memcpy(tapscript + offset, value_buffer, len);
-    offset += len;
-    tapscript[offset++] = 0xb2;
+    if (g_bbn_data.has_timelock) {
+        int len = encode_minimal_push(g_bbn_data.timelock, value_buffer);
+        if (g_bbn_data.timelock > 15) tapscript[offset++] = len;
+        memcpy(tapscript + offset, value_buffer, len);
+        offset += len;
+        tapscript[offset++] = 0xb2;
+    } else {
+        return false;
+    }
 
     bbn_leafhash_compute(tapscript, offset, leafhash);
+    return true;
 }
 
-void compute_bbn_merkle_root(uint8_t *roothash) {
+bool compute_bbn_merkle_root(uint8_t *roothash) {
     uint8_t slashing_leafhash[32];
     uint8_t unbonding_leafhash[32];
     uint8_t timelock_leafhash[32];
@@ -152,7 +215,7 @@ void compute_bbn_merkle_root(uint8_t *roothash) {
     crypto_tr_combine_taptree_hashes(slashing_leafhash, branch_hash, roothash);
 }
 
-void compute_bip322_txid_by_message(const uint8_t *message,
+bool compute_bip322_txid_by_message(const uint8_t *message,
                                     size_t message_len,
                                     const uint8_t *tappub,
                                     uint8_t *txid_out) {
@@ -165,7 +228,7 @@ void compute_bip322_txid_by_message(const uint8_t *message,
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
 
-    convert_bits(converted_5bit, &datalen, 5, message, message_len, 8, 1);
+    bbn_convert_bits(converted_5bit, &datalen, 5, message, message_len, 8, 1);
     bech32_encode(converted_message,
                   (const char *) "bbn",
                   converted_5bit,

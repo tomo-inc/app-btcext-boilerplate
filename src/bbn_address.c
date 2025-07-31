@@ -1,17 +1,25 @@
 #include <stdbool.h>
 #include <inttypes.h>
+#include <stddef.h>
+#include "../bitcoin_app_base/src/common/segwit_addr.h"
+#include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "bbn_script.h"
+#include "bbn_def.h"
+#include "bbn_data.h"
 #include "bbn_script.h"
 #include "bbn_address.h"
 
-bool bbn_check_staking_address(void) {
+bool bbn_check_staking_address(sign_psbt_state_t *st) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
 
-    // to check uint32_t psbt_timelock here
-    // if 0 or negative, return false
-    // to advoid BBN-#04 Potential buffer overflow
-    if (st->psbt_timelock == 0 || st->psbt_timelock > 0x7FFFFFFF) {
-        PRINTF("timelock state is 0 or negtive\n");
+    if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk || !g_bbn_data.has_cov_key_list ||
+        !g_bbn_data.has_cov_quorum || !g_bbn_data.has_fp_list) {
+        PRINTF("Missing required data for staking address check\n");
+        return false;
+    }
+    if (g_bbn_data.timelock == 0 || g_bbn_data.timelock > 0x7FFFFFFF) {
+        PRINTF("timelock state is 0 or too large\n");
         return false;
     }
     // Compute the merkle root
@@ -40,19 +48,22 @@ bool bbn_check_staking_address(void) {
     return true;
 }
 
-bool bbn_check_slashing_address(void) {
+bool bbn_check_slashing_address(sign_psbt_state_t *st) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
 
-    get_fee_from_desciptor(st);
+    if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk) {
+        PRINTF("Missing required data for staking address check\n");
+        return false;
+    }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    if (fee < st->psbt_fee) {
+    if (fee < g_bbn_data.slashing_fee_limit) {
         PRINTF("Fee too low\n");
         return false;
     }
 
     // Compute the merkle root
-    compute_bbn_leafhash_timelock(st, merkle_root);
+    compute_bbn_leafhash_timelock(merkle_root);
     uint8_t parity;
     // Tweak the staker public key with the merkle root
     uint8_t NUMS_PUBKEY[] = {0x02, 0x50, 0x92, 0x9b, 0x74, 0xc1, 0xa0, 0x49, 0x54, 0xb7, 0x8b,
@@ -78,18 +89,14 @@ bool bbn_check_slashing_address(void) {
         PRINTF("tweak public key cmp fail\n");
         return false;
     }
-
-    // check the burn address
-    unsigned int cov_count = count_psbt_covenant_pk_state(st->psbt_covenant_pk_state);
-
-    uint8_t *slashPkScript = st->psbt_covenant_pk[cov_count - 2];
-    if (slashPkScript == NULL) {
-        PRINTF("missing burn address null\n");
+    if (!g_bbn_data.has_slashing_address) {
+        PRINTF("Slashing address not found\n");
         return false;
     }
-    if (memcmp(st->outputs.output_scripts[0], slashPkScript, 32)) {
+
+    if (memcmp(st->outputs.output_scripts[0], g_bbn_data.slashing_address, 32)) {
         PRINTF("Slashing burn address:\n");
-        PRINTF_BUF(slashPkScript, 32);
+        PRINTF_BUF(g_bbn_data.slashing_address, 32);
         PRINTF_BUF(st->outputs.output_scripts[0], 32);
         PRINTF("tweak public key cmp fail\n");
         return false;
@@ -109,25 +116,30 @@ static void compute_bbn_unbond_root(uint8_t *roothash) {
     uint8_t slashing_leafhash[32];
     uint8_t timelock_leafhash[32];
 
-    compute_bbn_leafhash_slasing(st, slashing_leafhash);
-    compute_bbn_leafhash_timelock(st, timelock_leafhash);
+    compute_bbn_leafhash_slasing(slashing_leafhash);
+    compute_bbn_leafhash_timelock(timelock_leafhash);
     crypto_tr_combine_taptree_hashes(slashing_leafhash, timelock_leafhash, roothash);
 }
 
-bool bbn_check_unbond_address(void) {
+bool bbn_check_unbond_address(sign_psbt_state_t *st) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
-    if (st->psbt_timelock == 0) {
-        PRINTF("timelock state is 0\n");
+
+    if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk || !g_bbn_data.has_cov_key_list ||
+        !g_bbn_data.has_cov_quorum || !g_bbn_data.has_unbonding_fee_limit) {
+        PRINTF("Missing required data for staking address check\n");
+        return false;
+    }
+    if (g_bbn_data.timelock == 0 || g_bbn_data.timelock > 0x7FFFFFFF) {
+        PRINTF("timelock state is 0 or too large\n");
         return false;
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    get_fee_from_desciptor(st);
-    if (fee != st->psbt_fee) {
-        PRINTF("unbond fee mismatch\n");
+    if (fee < g_bbn_data.unbonding_fee_limit) {
+        PRINTF("Fee too low\n");
         return false;
     }
-    compute_bbn_unbond_root(st, merkle_root);
+    compute_bbn_unbond_root(merkle_root);
     uint8_t parity;
 
     uint8_t NUMS_PUBKEY[] = {0x02, 0x50, 0x92, 0x9b, 0x74, 0xc1, 0xa0, 0x49, 0x54, 0xb7, 0x8b,
@@ -155,26 +167,28 @@ bool bbn_check_unbond_address(void) {
     return true;
 }
 
-static bool bbn_check_message(void) {
-    uint8_t txid[32];
+bool bbn_check_message(void) {
     uint8_t message[64] = {0};
     size_t message_len = 0;
     char message_str[128] = {0};
 
-    compute_bip322_txid_by_message(st->psbt_leafhash + 1,
-                                   st->psbt_leafhash_state,
-                                   st->psbt_finality_pk,
-                                   txid);
-    if (memcmp(txid, st->psbt_staker_pk, 32) != 0) {
-        PRINTF("txid\n");
-        // PRINTF_BUF(txid, 32);
-        PRINTF("st->psbt_staker_pk\n");
-        // PRINTF_BUF(st->psbt_staker_pk, 32);
-        SEND_SW(dc, SW_DENY);
+    if (!g_bbn_data.has_message || !g_bbn_data.has_fp_list || !g_bbn_data.has_staker_pk ||
+        !g_bbn_data.has_txid) {
+        PRINTF("Missing required data for message check\n");
         return false;
     }
 
-    convert_bits(message, &message_len, 5, st->psbt_leafhash + 1, st->psbt_leafhash_state, 8, 1);
+    compute_bip322_txid_by_message(g_bbn_data.message,
+                                   g_bbn_data.message_len,
+                                   g_bbn_data.fp_list[0],
+                                   g_bbn_data.txid);
+    if (memcmp(g_bbn_data.txid, g_bbn_data.staker_pk, 32) != 0) {
+        PRINTF("txid\n");
+        PRINTF("st->psbt_staker_pk\n");
+        return false;
+    }
+
+    bbn_convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
     bech32_encode(message_str,
                   (const char *) "bbn",
                   message,

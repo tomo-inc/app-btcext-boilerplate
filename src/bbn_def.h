@@ -61,4 +61,13 @@ typedef enum {
 #define BBN_MAX_FP_COUNT  16
 #define BBN_MAX_COV_COUNT 16
 
+#define PRINTF_BUF(ptr, len)                              \
+    do {                                                  \
+        PRINTF("Buffer: ");                               \
+        for (uint32_t z = 0; z < (uint32_t) (len); z++) { \
+            PRINTF("%02X", (ptr)[z]);                     \
+        }                                                 \
+        PRINTF("\n");                                     \
+    } while (0)
+
 #endif  // BBN_DEF_H

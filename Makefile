@@ -47,10 +47,12 @@ APP_DESCRIPTION ="This app enables staking Bitcoin with Babylon"
 ifeq ($(COIN),BBNST)
 APPNAME ="Babylon BTC Staking"
 BITCOIN_NETWORK =mainnet
+ DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
 
 else ifeq ($(COIN),BBNST_test)
 APPNAME ="Babylon BTC Test"
 BITCOIN_NETWORK =testnet
+DEFINES   += BIP32_PUBKEY_VERSION=0x043587CF
 
 else ifeq ($(filter clean,$(MAKECMDGOALS)),)
 $(error Unsupported COIN - use $(VARIANT_VALUES))

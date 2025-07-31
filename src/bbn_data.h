@@ -52,12 +52,21 @@ typedef struct {
     bool has_timelock;
     uint64_t timelock;
 
+    bool has_slashing_address;
+    uint8_t slashing_address[32];
+
     // Fee Limits
     bool has_slashing_fee_limit;
     uint64_t slashing_fee_limit;
     bool has_unbonding_fee_limit;
     uint64_t unbonding_fee_limit;
 
+    bool has_message;
+    uint8_t message[128];
+    uint32_t message_len;
+
+    bool has_txid;
+    uint8_t txid[32];
 } bbn_data_t;
 
 // 全局变量声明
