@@ -12,6 +12,8 @@
 #include "bbn_def.h"
 #include "bbn_tlv.h"
 #include "bbn_data.h"
+#include "bbn_script.h"
+#include "bbn_address.h"
 #include "display.h"
 
 #define H 0x80000000
@@ -226,7 +228,7 @@ static bool validate_transaction(dispatcher_context_t *dc,
         SEND_SW(dc, SW_INCORRECT_DATA);
         return false;
     }
-    uint64_t amount = read_u64_le(raw_amount, 0);
+    // uint64_t amount = read_u64_le(raw_amount, 0);
 
     // if (amount != 0) {
     //     PRINTF("External output has non-zero amount\n");
@@ -236,12 +238,13 @@ static bool validate_transaction(dispatcher_context_t *dc,
 
     // Read the output's scriptPubKey
     uint8_t scriptPubKey[32];
-    int result_len = call_get_merkleized_map_value(dc,
-                                                   &output_map,
-                                                   (uint8_t[]) {PSBT_OUT_SCRIPT},
-                                                   1,
-                                                   scriptPubKey,
-                                                   sizeof(scriptPubKey));
+    // int result_len =
+    call_get_merkleized_map_value(dc,
+                                  &output_map,
+                                  (uint8_t[]) {PSBT_OUT_SCRIPT},
+                                  1,
+                                  scriptPubKey,
+                                  sizeof(scriptPubKey));
     // if (result_len != sizeof(OP_RETURN_FOO) ||
     //     memcmp(scriptPubKey, OP_RETURN_FOO, sizeof(OP_RETURN_FOO)) != 0) {
     //     PRINTF("External output is not an OP_RETURN with the message 'FOO'\n");
@@ -284,6 +287,24 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         return false;
     }
     display_actions(dc, g_bbn_data.action_type);
+    switch (g_bbn_data.action_type) {
+        case BBN_POLICY_SLASHING:
+            if (!bbn_check_slashing_address(st)) {
+                PRINTF("bbn_check_slashing_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
+        case BBN_POLICY_STAKE_TRANSFER:
+            if (!bbn_check_staking_address(st)) {
+                PRINTF("bbn_check_staking_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
+        default:
+            break;
+    }
 
     if (g_bbn_data.has_fp_list) {
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {

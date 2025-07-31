@@ -8,7 +8,6 @@
 #include "bbn_data.h"
 #include "bbn_script.h"
 
-static const uint8_t BIP0341_sighash_tag[] = {'T', 'a', 'p', 'S', 'i', 'g', 'h', 'a', 's', 'h'};
 static const uint8_t BIP0322_msghash_tag[] = {'B', 'I', 'P', '0', '3', '2', '2', '-',
                                               's', 'i', 'g', 'n', 'e', 'd', '-', 'm',
                                               'e', 's', 's', 'a', 'g', 'e'};
@@ -200,7 +199,7 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
     return true;
 }
 
-bool compute_bbn_merkle_root(uint8_t *roothash) {
+void compute_bbn_merkle_root(uint8_t *roothash) {
     uint8_t slashing_leafhash[32];
     uint8_t unbonding_leafhash[32];
     uint8_t timelock_leafhash[32];
@@ -215,7 +214,7 @@ bool compute_bbn_merkle_root(uint8_t *roothash) {
     crypto_tr_combine_taptree_hashes(slashing_leafhash, branch_hash, roothash);
 }
 
-bool compute_bip322_txid_by_message(const uint8_t *message,
+void compute_bip322_txid_by_message(const uint8_t *message,
                                     size_t message_len,
                                     const uint8_t *tappub,
                                     uint8_t *txid_out) {

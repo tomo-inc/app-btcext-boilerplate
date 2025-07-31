@@ -3,6 +3,7 @@
 #include "../bitcoin_app_base/src/common/psbt.h"
 #include "../bitcoin_app_base/src/common/bitvector.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "../bitcoin_app_base/src/handler/lib/get_merkleized_map_value.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "io.h"
 #include "nbgl_use_case.h"
@@ -120,8 +121,8 @@ bool display_transaction(dispatcher_context_t *dc,
     nbgl_layoutTagValue_t pairs[4];
     nbgl_layoutTagValueList_t pairList;
 
-    // format value_spent
-    char value_str[32], addr_str[64], fee_str[32];
+    // format value_spent addr_str[64],
+    char value_str[32], fee_str[32];
     uint64_t value_spent_abs = value_spent < 0 ? -value_spent : value_spent;
     format_sats_amount(COIN_COINID_SHORT, value_spent_abs, value_str);
     format_sats_amount(COIN_COINID_SHORT, fee, fee_str);
@@ -336,8 +337,8 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
         SEND_SW(dc, SW_INCORRECT_DATA);
         return false;
     }
-    uint64_t value = read_u64_le(raw_result, 0);
-    *out_amount = value;
+    // uint64_t value = read_u64_le(raw_result, 0);
+    // *out_amount = value;
 
     // Read the output's scriptPubKey
     result_len = call_get_merkleized_map_value(dc,
