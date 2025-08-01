@@ -11,6 +11,8 @@
 #define TAG_TIMELOCK            0x71
 #define TAG_SLASHING_FEE_LIMIT  0xfe
 #define TAG_UNBONDING_FEE_LIMIT 0xff
+#define TAG_MESSAGE             0x33
+#define TAG_TXID                0x35
 
 // Action Type定义
 #define ACTION_STAKING            1
