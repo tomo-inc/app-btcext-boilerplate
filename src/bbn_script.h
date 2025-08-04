@@ -1,3 +1,8 @@
+#pragma once
+
+#include <stdint.h>
+#include <stdbool.h>  // 添加这行
+
 #ifndef BBN_SCRIPT_H
 #define BBN_SCRIPT_H
 

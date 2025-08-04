@@ -1,0 +1,37 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential gcov lcov
+    
+    - name: Run unit tests
+      run: |
+        cd unit-tests
+        chmod +x build.sh
+        ./build.sh
+    
+    - name: Generate coverage report
+      run: |
+        cd unit-tests
+        chmod +x build_coverage.sh
+        ./build_coverage.sh
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./unit-tests/build_coverage/coverage.info
+        fail_ci_if_error: true

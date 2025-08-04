@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>  // 添加这行
 #include <inttypes.h>
 #include <stddef.h>
 #include "../bitcoin_app_base/src/common/segwit_addr.h"
