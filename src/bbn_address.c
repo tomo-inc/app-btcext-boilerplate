@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "bbn_pub.h"
 #include "bbn_script.h"
 #include "bbn_def.h"
 #include "bbn_data.h"
@@ -52,14 +53,19 @@ bool bbn_check_staking_address(sign_psbt_state_t *st) {
 bool bbn_check_slashing_address(sign_psbt_state_t *st) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
-
-    if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk) {
+    uint8_t staker_pk[33];
+    //int32_t rv = bbn_derive_staker_pubkey_from_policy(st, 0 ,staker_pk);
+    //PRINTF("bbn_derive_staker_pubkey_from_policy rv: %d\n", rv);
+    //PRINTF_BUF(staker_pk, 33);
+    // || !g_bbn_data.has_staker_pk
+    if (!g_bbn_data.has_timelock) {
         PRINTF("Missing required data for staking address check\n");
         return false;
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     if (fee < g_bbn_data.slashing_fee_limit) {
-        PRINTF("Fee too low\n");
+        PRINTF("inputs_total_amount=%d,total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);
+        PRINTF("Fee too low fee=%d limit=%d\n", fee, g_bbn_data.slashing_fee_limit);
         return false;
     }
 

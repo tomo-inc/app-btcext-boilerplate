@@ -282,30 +282,14 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
     PRINTF("!!!!!!!1*****************  Validating and displaying transaction\n");
-
+    PRINTF("222 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);                                    
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
         return false;
     }
+    PRINTF("111 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);
     display_actions(dc, g_bbn_data.action_type);
-    switch (g_bbn_data.action_type) {
-        case BBN_POLICY_SLASHING:
-            if (!bbn_check_slashing_address(st)) {
-                PRINTF("bbn_check_slashing_address failed\n");
-                SEND_SW(dc, SW_DENY);
-                return false;
-            }
-            break;
-        case BBN_POLICY_STAKE_TRANSFER:
-            if (!bbn_check_staking_address(st)) {
-                PRINTF("bbn_check_staking_address failed\n");
-                SEND_SW(dc, SW_DENY);
-                return false;
-            }
-            break;
-        default:
-            break;
-    }
-
+    PRINTF("action_type: %d\n", g_bbn_data.action_type);
+   
     if (g_bbn_data.has_fp_list) {
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
             PRINTF("display_public_keys failed\n");
@@ -329,7 +313,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             return false;
         }
     }
-
+    PRINTF("000 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);
     if (!display_external_outputs(dc, st, internal_outputs)) {
         PRINTF("display_external_outputs fail \n");
         return false;
@@ -339,12 +323,37 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         SEND_SW(dc, SW_DENY);
         return false;
     }
+    
+    // switch (g_bbn_data.action_type) {
+    //     case BBN_POLICY_SLASHING:
+    //         PRINTF("bbn_check_slashing_address\n");
+    //         if (!bbn_check_slashing_address(st)) {
+    //             PRINTF("bbn_check_slashing_address failed\n");
+    //             SEND_SW(dc, SW_DENY);
+    //             return false;
+    //         }
+    //         break;
+    //     case BBN_POLICY_STAKE_TRANSFER:
+    //         PRINTF("bbn_check_staking_address\n");
+    //         if (!bbn_check_staking_address(st)) {
+    //             PRINTF("bbn_check_staking_address failed\n");
+    //             SEND_SW(dc, SW_DENY);
+    //             return false;
+    //         }
+    //         break;
+    //     default:
+    //         break;
+    // }
+
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
+    PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", (uint32_t)st->inputs_total_amount, (uint32_t)st->outputs.total_amount);
+    PRINTF("Fee: %d\n", (uint32_t)fee);
     if (!ui_validate_transaction(dc, COIN_COINID_SHORT, fee, false)) {
         PRINTF("ui_validate_transaction fail \n");
         SEND_SW(dc, SW_DENY);
         return false;
     }
+
     return true;
 }
 
