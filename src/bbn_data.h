@@ -18,6 +18,7 @@
 #define TAG_UNBONDING_FEE_LIMIT 0xff
 #define TAG_MESSAGE             0x33
 #define TAG_TXID                0x35
+#define TAG_BURN_ADDRESS        0x36
 
 // Action Type定义
 #define ACTION_STAKING            1
@@ -59,8 +60,9 @@ typedef struct {
     bool has_timelock;
     uint64_t timelock;
 
-    bool has_slashing_address;
-    uint8_t slashing_address[32];
+    bool has_burn_address;
+    uint8_t burn_address[32];
+    uint32_t burn_address_len;
 
     // Fee Limits
     bool has_slashing_fee_limit;

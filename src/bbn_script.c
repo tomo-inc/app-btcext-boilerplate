@@ -172,14 +172,21 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
 }
 
 bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
+    PRINTF("compute_bbn_leafhash_timelock\n");
+
     uint8_t tapscript[1024] = {0};
     int offset = 0;
+
+    PRINTF("compute_bbn_leafhash_timelock staker_pk:\n");
+    PRINTF_BUF(g_bbn_data.staker_pk, 32);
 
     tapscript[offset++] = 0x20;
     if (g_bbn_data.has_staker_pk)
         memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
-    else
-        return false;
+    else {
+        PRINTF("No timelock has_staker_pk\n");
+        return false;  
+    }
 
     offset += 32;
     tapscript[offset++] = 0xad;
@@ -192,9 +199,12 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         offset += len;
         tapscript[offset++] = 0xb2;
     } else {
+        PRINTF("No timelock found\n");  
         return false;
     }
-
+    PRINTF("timelock: %d\n", (uint32_t)g_bbn_data.timelock);
+    PRINTF("tap length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
 }

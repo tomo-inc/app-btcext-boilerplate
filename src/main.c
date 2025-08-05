@@ -324,26 +324,26 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         return false;
     }
     
-    // switch (g_bbn_data.action_type) {
-    //     case BBN_POLICY_SLASHING:
-    //         PRINTF("bbn_check_slashing_address\n");
-    //         if (!bbn_check_slashing_address(st)) {
-    //             PRINTF("bbn_check_slashing_address failed\n");
-    //             SEND_SW(dc, SW_DENY);
-    //             return false;
-    //         }
-    //         break;
-    //     case BBN_POLICY_STAKE_TRANSFER:
-    //         PRINTF("bbn_check_staking_address\n");
-    //         if (!bbn_check_staking_address(st)) {
-    //             PRINTF("bbn_check_staking_address failed\n");
-    //             SEND_SW(dc, SW_DENY);
-    //             return false;
-    //         }
-    //         break;
-    //     default:
-    //         break;
-    // }
+    switch (g_bbn_data.action_type) {
+        case BBN_POLICY_SLASHING:
+            PRINTF("bbn_check_slashing_address\n");
+            if (!bbn_check_slashing_address(st)) {
+                PRINTF("bbn_check_slashing_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
+        case BBN_POLICY_STAKE_TRANSFER:
+            PRINTF("bbn_check_staking_address\n");
+            if (!bbn_check_staking_address(st)) {
+                PRINTF("bbn_check_staking_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
+        default:
+            break;
+    }
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", (uint32_t)st->inputs_total_amount, (uint32_t)st->outputs.total_amount);
