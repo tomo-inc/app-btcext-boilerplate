@@ -50,24 +50,21 @@ bool bbn_check_staking_address(sign_psbt_state_t *st) {
     return true;
 }
 
-bool bbn_check_slashing_address(sign_psbt_state_t *st) {
+bool bbn_check_slashing_address(sign_psbt_state_t *st, uint8_t *staker_pk) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
-    uint8_t staker_pk[32];
-
-    int32_t rv = bbn_derive_staker_pubkey_from_policy(st, 0 ,staker_pk);
-    PRINTF("bbn_derive_staker_pubkey_from_policy rv: %d\n", rv);
-    memcpy(g_bbn_data.staker_pk, staker_pk, 32);
-    PRINTF("staker_pk:\n");
+ 
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
-    
+
     if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk) {
-        PRINTF("Missing required data for staking address check\n");
+        PRINTF("Missing required data for slashing address check\n");
         return false;
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     if (fee < g_bbn_data.slashing_fee_limit) {
-        PRINTF("inputs_total_amount=%d,total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);
+        PRINTF("inputs_total_amount=%d,total_amount=%d\n",
+               st->inputs_total_amount,
+               st->outputs.total_amount);
         PRINTF("Fee too low fee=%d limit=%d\n", fee, g_bbn_data.slashing_fee_limit);
         return false;
     }
@@ -104,7 +101,9 @@ bool bbn_check_slashing_address(sign_psbt_state_t *st) {
         return false;
     }
 
-    if (memcmp(st->outputs.output_scripts[0], g_bbn_data.burn_address, g_bbn_data.burn_address_len)) {
+    if (memcmp(st->outputs.output_scripts[0],
+               g_bbn_data.burn_address,
+               g_bbn_data.burn_address_len)) {
         PRINTF("Slashing burn address: %d\n", g_bbn_data.burn_address_len);
         PRINTF_BUF(g_bbn_data.burn_address, g_bbn_data.burn_address_len);
         PRINTF_BUF(st->outputs.output_scripts[0], g_bbn_data.burn_address_len);

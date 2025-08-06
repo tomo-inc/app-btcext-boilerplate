@@ -10,6 +10,7 @@
 #include "../bitcoin_app_base/src/handler/sign_psbt/txhashes.h"
 #include "../bitcoin_app_base/src/crypto.h"
 #include "bbn_def.h"
+#include "bbn_pub.h"
 #include "bbn_tlv.h"
 #include "bbn_data.h"
 #include "bbn_script.h"
@@ -18,14 +19,13 @@
 #include "display.h"
 
 #define H 0x80000000
-static const uint32_t magic_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
+static const uint32_t test_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
 
-#define P2TR_SCRIPTPUBKEY_LEN 34
+//#define P2TR_SCRIPTPUBKEY_LEN 34
 // records the value of the special input across calls
-static uint64_t magic_input_value;
-static int external_input_index;
-static merkleized_map_commitment_t external_input_map;
-static uint8_t external_input_scriptPubKey[P2TR_SCRIPTPUBKEY_LEN];
+//static int external_input_index; 
+//static merkleized_map_commitment_t external_input_map;
+//static uint8_t external_input_scriptPubKey[P2TR_SCRIPTPUBKEY_LEN];
 
 #define INS_CUSTOM_XOR 0xbb
 #define CHUNK_SIZE     64
@@ -108,19 +108,19 @@ static bool validate_transaction(dispatcher_context_t *dc,
                                  const uint8_t internal_inputs[64],
                                  const uint8_t internal_outputs[64]) {
     // check that all inputs are indeed internal, except one
-    external_input_index = -1;
+    g_bbn_data.g_input_index = -1;
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {
-            if (external_input_index != -1) {
+            if (g_bbn_data.g_input_index != -1) {
                 PRINTF("More than one external input found\n");
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
-            external_input_index = i;
+            g_bbn_data.g_input_index = i;
         }
     }
 
-    if (external_input_index == -1) {
+    if (g_bbn_data.g_input_index == -1) {
         PRINTF("No external input found\n");
         SEND_SW(dc, SW_INCORRECT_DATA);
         return false;
@@ -132,104 +132,113 @@ static bool validate_transaction(dispatcher_context_t *dc,
     if (0 > call_get_merkleized_map(dc,
                                     st->inputs_root,
                                     st->n_inputs,
-                                    external_input_index,
-                                    &external_input_map)) {
+                                    g_bbn_data.g_input_index,
+                                    &g_bbn_data.g_input_map)) {
         PRINTF("Failed to get input map\n");
         return false;
     }
 
+    if(!bbn_derive_pubkey(test_pubkey_path,5, BIP32_PUBKEY_VERSION,
+                      g_bbn_data.g_input_scriptPubKey)) {
+        PRINTF("Failed to derive pubkey\n");
+        return false;
+    }
+    PRINTF("g_bbn_data.g_input_scriptPubKey: ");
+    PRINTF_BUF(g_bbn_data.g_input_scriptPubKey, 32);
+    memcpy(g_bbn_data.staker_pk, g_bbn_data.g_input_scriptPubKey, 32);
+    return true;
     // Read the input's witness utxo
-    uint8_t witness_utxo[8 + 1 + 34];  // 8 bytes amount; 1 byte length; 34 bytes P2TR Script
+    // uint8_t witness_utxo[8 + 1 + 34];  // 8 bytes amount; 1 byte length; 34 bytes P2TR Script
 
-    if (8 + 1 + 34 != call_get_merkleized_map_value(dc,
-                                                    &external_input_map,
-                                                    (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
-                                                    sizeof((uint8_t[]) {PSBT_IN_WITNESS_UTXO}),
-                                                    witness_utxo,
-                                                    sizeof(witness_utxo))) {
-        PRINTF("Failed to get witness utxo, or invalid witness utxo\n");
-        SEND_SW(dc, SW_INCORRECT_DATA);
-    };
-    if (witness_utxo[8] != 34) {
-        PRINTF("Unexpected scriptPubKey length in witness utxo: %d\n", witness_utxo[8]);
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
-    uint8_t *spk = witness_utxo + 9;
+    // if (8 + 1 + 34 != call_get_merkleized_map_value(dc,
+    //                                                 &external_input_map,
+    //                                                 (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
+    //                                                 sizeof((uint8_t[]) {PSBT_IN_WITNESS_UTXO}),
+    //                                                 witness_utxo,
+    //                                                 sizeof(witness_utxo))) {
+    //     PRINTF("Failed to get witness utxo, or invalid witness utxo\n");
+    //     SEND_SW(dc, SW_INCORRECT_DATA);
+    // };
+    // if (witness_utxo[8] != 34) {
+    //     PRINTF("Unexpected scriptPubKey length in witness utxo: %d\n", witness_utxo[8]);
+    //     SEND_SW(dc, SW_INCORRECT_DATA);
+    //     return false;
+    // }
+    // uint8_t *spk = witness_utxo + 9;
 
-    magic_input_value = read_u64_le(witness_utxo, 0);
+    // magic_input_value = read_u64_le(witness_utxo, 0);
 
-    serialized_extended_pubkey_t xpub;
-    if (0 > get_extended_pubkey_at_path(magic_pubkey_path,
-                                        ARRAYLEN(magic_pubkey_path),
-                                        BIP32_PUBKEY_VERSION,
-                                        &xpub)) {
-        PRINTF("Failed getting bip32 pubkey\n");
-        SEND_SW(dc, SW_BAD_STATE);
-        return false;
-    }
-    uint8_t *expected_key = xpub.compressed_pubkey + 1;  // x-only key
-    external_input_scriptPubKey[0] = 0x51;
-    external_input_scriptPubKey[1] = 0x20;
-    memcpy(external_input_scriptPubKey + 2, expected_key, 32);
-    PRINTF("Expected scriptPubKey: ");
-    PRINTF_BUF(external_input_scriptPubKey, 34);
-    PRINTF_BUF(spk, 32);
-    if (memcmp(spk, external_input_scriptPubKey, P2TR_SCRIPTPUBKEY_LEN) != 0) {
-        // the expected special input was not found
-        // PRINTF("Invalid scriptPubKey. Where's my magic?\n");
+    // serialized_extended_pubkey_t xpub;
+    // if (0 > get_extended_pubkey_at_path(magic_pubkey_path,
+    //                                     ARRAYLEN(magic_pubkey_path),
+    //                                     BIP32_PUBKEY_VERSION,
+    //                                     &xpub)) {
+    //     PRINTF("Failed getting bip32 pubkey\n");
+    //     SEND_SW(dc, SW_BAD_STATE);
+    //     return false;
+    // }
+    // uint8_t *expected_key = xpub.compressed_pubkey + 1;  // x-only key
+    // external_input_scriptPubKey[0] = 0x51;
+    // external_input_scriptPubKey[1] = 0x20;
+    // memcpy(external_input_scriptPubKey + 2, expected_key, 32);
+    // PRINTF("Expected scriptPubKey: ");
+    // PRINTF_BUF(external_input_scriptPubKey, 34);
+    // PRINTF_BUF(spk, 32);
+    // if (memcmp(spk, external_input_scriptPubKey, P2TR_SCRIPTPUBKEY_LEN) != 0) {
+    //     // the expected special input was not found
+    //     // PRINTF("Invalid scriptPubKey. Where's my magic?\n");
 
-        // SEND_SW(dc, SW_INCORRECT_DATA);
-        // return false;
-    }
+    //     // SEND_SW(dc, SW_INCORRECT_DATA);
+    //     // return false;
+    // }
 
     // check that all outputs are internal (that is, change), except one that is an OP_RETURN with
     // the message "Foo"
 
-    int external_output_index = -1;
-    for (unsigned int i = 0; i < st->n_outputs; i++) {
-        if (bitvector_get(internal_outputs, i) == 0) {
-            if (external_output_index != -1) {
-                // PRINTF("More than one external output found\n");
-                // SEND_SW(dc, SW_INCORRECT_DATA);
-                // return false;
-            }
-            external_output_index = i;
-        }
-    }
+    // int external_output_index = -1;
+    // for (unsigned int i = 0; i < st->n_outputs; i++) {
+    //     if (bitvector_get(internal_outputs, i) == 0) {
+    //         if (external_output_index != -1) {
+    //             // PRINTF("More than one external output found\n");
+    //             // SEND_SW(dc, SW_INCORRECT_DATA);
+    //             // return false;
+    //         }
+    //         external_output_index = i;
+    //     }
+    // }
 
-    if (external_output_index == -1) {
-        PRINTF("No external output found\n");
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
+    // if (external_output_index == -1) {
+    //     PRINTF("No external output found\n");
+    //     SEND_SW(dc, SW_INCORRECT_DATA);
+    //     return false;
+    // }
 
     // this output is external. Verify that:
     // - it is an OP_RETURN with the "FOO" message
     // - the amount is 0
 
-    // obtain the commitment to the i-th output's map
-    merkleized_map_commitment_t output_map;
-    if (0 > call_get_merkleized_map(dc,
-                                    st->outputs_root,
-                                    st->n_outputs,
-                                    external_output_index,
-                                    &output_map)) {
-        PRINTF("Failed to get output map\n");
-        return false;
-    }
+    // // obtain the commitment to the i-th output's map
+    // merkleized_map_commitment_t output_map;
+    // if (0 > call_get_merkleized_map(dc,
+    //                                 st->outputs_root,
+    //                                 st->n_outputs,
+    //                                 external_output_index,
+    //                                 &output_map)) {
+    //     PRINTF("Failed to get output map\n");
+    //     return false;
+    // }
 
-    // Read output amount
-    uint8_t raw_amount[8];
-    if (8 != call_get_merkleized_map_value(dc,
-                                           &output_map,
-                                           (uint8_t[]) {PSBT_OUT_AMOUNT},
-                                           sizeof((uint8_t[]) {PSBT_OUT_AMOUNT}),
-                                           raw_amount,
-                                           sizeof(raw_amount))) {
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
+    // // Read output amount
+    // uint8_t raw_amount[8];
+    // if (8 != call_get_merkleized_map_value(dc,
+    //                                        &output_map,
+    //                                        (uint8_t[]) {PSBT_OUT_AMOUNT},
+    //                                        sizeof((uint8_t[]) {PSBT_OUT_AMOUNT}),
+    //                                        raw_amount,
+    //                                        sizeof(raw_amount))) {
+    //     SEND_SW(dc, SW_INCORRECT_DATA);
+    //     return false;
+    // }
     // uint64_t amount = read_u64_le(raw_amount, 0);
 
     // if (amount != 0) {
@@ -239,14 +248,14 @@ static bool validate_transaction(dispatcher_context_t *dc,
     // }
 
     // Read the output's scriptPubKey
-    uint8_t scriptPubKey[32];
-    // int result_len =
-    call_get_merkleized_map_value(dc,
-                                  &output_map,
-                                  (uint8_t[]) {PSBT_OUT_SCRIPT},
-                                  1,
-                                  scriptPubKey,
-                                  sizeof(scriptPubKey));
+    // uint8_t scriptPubKey[32];
+    // // int result_len =
+    // call_get_merkleized_map_value(dc,
+    //                               &output_map,
+    //                               (uint8_t[]) {PSBT_OUT_SCRIPT},
+    //                               1,
+    //                               scriptPubKey,
+    //                               sizeof(scriptPubKey));
     // if (result_len != sizeof(OP_RETURN_FOO) ||
     //     memcmp(scriptPubKey, OP_RETURN_FOO, sizeof(OP_RETURN_FOO)) != 0) {
     //     PRINTF("External output is not an OP_RETURN with the message 'FOO'\n");
@@ -254,7 +263,7 @@ static bool validate_transaction(dispatcher_context_t *dc,
     //     return false;
     // }
 
-    return true;
+
 }
 
 /**
@@ -283,15 +292,15 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       sign_psbt_state_t *st,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
-    PRINTF("!!!!!!!1*****************  Validating and displaying transaction\n");
-    PRINTF("222 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);                                    
+    PRINTF("Validating and displaying transaction\n");
+
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
         return false;
     }
-    PRINTF("111 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);
+
     display_actions(dc, g_bbn_data.action_type);
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
-   
+
     if (g_bbn_data.has_fp_list) {
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
             PRINTF("display_public_keys failed\n");
@@ -315,7 +324,9 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             return false;
         }
     }
-    PRINTF("000 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", st->inputs_total_amount, st->outputs.total_amount);
+    PRINTF("000 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",
+           st->inputs_total_amount,
+           st->outputs.total_amount);
     if (!display_external_outputs(dc, st, internal_outputs)) {
         PRINTF("display_external_outputs fail \n");
         return false;
@@ -325,11 +336,11 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         SEND_SW(dc, SW_DENY);
         return false;
     }
-    
+
     switch (g_bbn_data.action_type) {
         case BBN_POLICY_SLASHING:
             PRINTF("bbn_check_slashing_address\n");
-            if (!bbn_check_slashing_address(st)) {
+            if (!bbn_check_slashing_address(st, g_bbn_data.staker_pk)) {
                 PRINTF("bbn_check_slashing_address failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
@@ -348,8 +359,10 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n", (uint32_t)st->inputs_total_amount, (uint32_t)st->outputs.total_amount);
-    PRINTF("Fee: %d\n", (uint32_t)fee);
+    PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",
+           (uint32_t) st->inputs_total_amount,
+           (uint32_t) st->outputs.total_amount);
+    PRINTF("Fee: %d\n", (uint32_t) fee);
     if (!ui_validate_transaction(dc, COIN_COINID_SHORT, fee, false)) {
         PRINTF("ui_validate_transaction fail \n");
         SEND_SW(dc, SW_DENY);
@@ -382,7 +395,7 @@ bool sign_custom_inputs(
     UNUSED(dc), UNUSED(st), UNUSED(tx_hashes), UNUSED(internal_inputs);
 
     uint8_t sighash[32];
-    PRINTF("!!!!!!!1***************** Signing custom inputs %d\n", g_bbn_data.action_type);
+    PRINTF("igning custom inputs %d\n", g_bbn_data.action_type);
     // compute the sighash for the special input
     uint8_t leafhash[32];
     compute_bbn_leafhash_slashing(leafhash);
@@ -392,33 +405,25 @@ bool sign_custom_inputs(
     if (!compute_sighash_segwitv1(dc,
                                   st,
                                   tx_hashes,
-                                  &external_input_map,
-                                  external_input_index,
-                                  external_input_scriptPubKey,
-                                  sizeof(external_input_scriptPubKey),
+                                  &g_bbn_data.g_input_map,
+                                  g_bbn_data.g_input_index,
+                                  g_bbn_data.g_input_scriptPubKey,
+                                  sizeof(g_bbn_data.g_input_scriptPubKey),
                                   leafhash,
                                   SIGHASH_DEFAULT,
                                   sighash)) {
         PRINTF("Failed to compute the sighash\n");
         return false;
     }
-    PRINTF("!!!!!!!1***************** compute_sighash_segwitv1\n");
-    PRINTF("Signing parameters:\n");
-    PRINTF("external_input_index: %d\n", external_input_index);
-    PRINTF("magic_pubkey_path: ");
-    for (size_t i = 0; i < ARRAYLEN(magic_pubkey_path); i++) {
-        PRINTF("0x%08x ", magic_pubkey_path[i]);
-    }
-    PRINTF("\n");
-    PRINTF("external_input_scriptPubKey: ");
-    PRINTF_BUF(external_input_scriptPubKey, sizeof(external_input_scriptPubKey));
+ 
     PRINTF("sighash: ");
     PRINTF_BUF(sighash, sizeof(sighash));
+
     if (!sign_sighash_schnorr_and_yield(dc,
                                         st,
-                                        external_input_index,
-                                        magic_pubkey_path,
-                                        ARRAYLEN(magic_pubkey_path),
+                                        g_bbn_data.g_input_index,
+                                        test_pubkey_path,
+                                        5,
                                         NULL,
                                         0,
                                         leafhash,
@@ -427,6 +432,6 @@ bool sign_custom_inputs(
         PRINTF("Signing failed\n");
         return false;
     }
-    PRINTF("!!!!!!!1***************** sign_sighash_schnorr_and_yield\n");
+    PRINTF("sign_sighash_schnorr_and_yield\n");
     return true;
 }

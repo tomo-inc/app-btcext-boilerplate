@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/crypto.h"
+#include "../bitcoin_app_base/src/common/merkle.h"
 #include "bbn_def.h"
 #include "bbn_data.h"
 #include "bbn_script.h"
@@ -98,7 +99,7 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
         for (int i = 0; i < g_bbn_data.fp_count; i++) {
             memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
             offset += 32;
-            tapscript[offset++] = 0xad; //TODO confirm multi FP is single sig or multi-sig
+            tapscript[offset++] = 0xad;  // TODO confirm multi FP is single sig or multi-sig
         }
     } else {
         return false;
@@ -187,7 +188,7 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
     else {
         PRINTF("No timelock has_staker_pk\n");
-        return false;  
+        return false;
     }
 
     offset += 32;
@@ -201,10 +202,10 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         offset += len;
         tapscript[offset++] = 0xb2;
     } else {
-        PRINTF("No timelock found\n");  
+        PRINTF("No timelock found\n");
         return false;
     }
-    PRINTF("timelock: %d\n", (uint32_t)g_bbn_data.timelock);
+    PRINTF("timelock: %d\n", (uint32_t) g_bbn_data.timelock);
     PRINTF("tap length: %d\n", offset);
     PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
