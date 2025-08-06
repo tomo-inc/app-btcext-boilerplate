@@ -43,7 +43,7 @@ static void test_compute_bbn_leafhash_slashing(void) {
     setup_test_data();
     
     uint8_t leafhash[32];
-    bool result = compute_bbn_leafhash_slasing(leafhash);
+    bool result = compute_bbn_leafhash_slashing(leafhash);
     
     TEST_ASSERT(result == true, "compute_bbn_leafhash_slashing should succeed");
     

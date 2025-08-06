@@ -126,7 +126,7 @@ static void compute_bbn_unbond_root(uint8_t *roothash) {
     uint8_t slashing_leafhash[32];
     uint8_t timelock_leafhash[32];
 
-    compute_bbn_leafhash_slasing(slashing_leafhash);
+    compute_bbn_leafhash_slashing(slashing_leafhash);
     compute_bbn_leafhash_timelock(timelock_leafhash);
     crypto_tr_combine_taptree_hashes(slashing_leafhash, timelock_leafhash, roothash);
 }

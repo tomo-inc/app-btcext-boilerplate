@@ -13,6 +13,7 @@
 #include "bbn_tlv.h"
 #include "bbn_data.h"
 #include "bbn_script.h"
+#include "bbn_script.h"
 #include "bbn_address.h"
 #include "display.h"
 
@@ -382,6 +383,10 @@ bool sign_custom_inputs(
     uint8_t sighash[32];
     PRINTF("!!!!!!!1***************** Signing custom inputs %d\n", g_bbn_data.action_type);
     // compute the sighash for the special input
+    uint8_t leafhash[32];
+    compute_bbn_leafhash_slashing(leafhash);
+    PRINTF("leafhash: ");
+    PRINTF_BUF(leafhash, sizeof(leafhash));
 
     if (!compute_sighash_segwitv1(dc,
                                   st,
@@ -390,7 +395,7 @@ bool sign_custom_inputs(
                                   external_input_index,
                                   external_input_scriptPubKey,
                                   sizeof(external_input_scriptPubKey),
-                                  NULL,
+                                  leafhash,
                                   SIGHASH_DEFAULT,
                                   sighash)) {
         PRINTF("Failed to compute the sighash\n");

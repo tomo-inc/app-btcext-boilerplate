@@ -78,7 +78,7 @@ static int encode_minimal_push(uint32_t value, uint8_t *buffer) {
     return size;
 }
 
-bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
+bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
@@ -98,6 +98,7 @@ bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
         for (int i = 0; i < g_bbn_data.fp_count; i++) {
             memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
             offset += 32;
+            tapscript[offset++] = 0xad; //TODO confirm multi FP is single sig or multi-sig
         }
     } else {
         return false;
@@ -124,7 +125,8 @@ bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-
+    PRINTF("tapscript length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
@@ -214,7 +216,7 @@ void compute_bbn_merkle_root(uint8_t *roothash) {
     uint8_t unbonding_leafhash[32];
     uint8_t timelock_leafhash[32];
 
-    compute_bbn_leafhash_slasing(slashing_leafhash);
+    compute_bbn_leafhash_slashing(slashing_leafhash);
     compute_bbn_leafhash_unbonding(unbonding_leafhash);
     compute_bbn_leafhash_timelock(timelock_leafhash);
 
