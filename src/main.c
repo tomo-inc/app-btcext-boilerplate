@@ -18,7 +18,7 @@
 #include "display.h"
 
 #define H 0x80000000
-static const uint32_t magic_pubkey_path[] = {86 ^ H, 1 ^ H, 99 ^ H};
+static const uint32_t magic_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
 
 #define P2TR_SCRIPTPUBKEY_LEN 34
 // records the value of the special input across calls
@@ -172,6 +172,7 @@ static bool validate_transaction(dispatcher_context_t *dc,
     external_input_scriptPubKey[0] = 0x51;
     external_input_scriptPubKey[1] = 0x20;
     memcpy(external_input_scriptPubKey + 2, expected_key, 32);
+    PRINTF("Expected scriptPubKey: ");
     PRINTF_BUF(external_input_scriptPubKey, 34);
     PRINTF_BUF(spk, 32);
     if (memcmp(spk, external_input_scriptPubKey, P2TR_SCRIPTPUBKEY_LEN) != 0) {
@@ -420,7 +421,7 @@ bool sign_custom_inputs(
                                         ARRAYLEN(magic_pubkey_path),
                                         NULL,
                                         0,
-                                        NULL,
+                                        leafhash,
                                         SIGHASH_DEFAULT,
                                         sighash)) {
         PRINTF("Signing failed\n");
