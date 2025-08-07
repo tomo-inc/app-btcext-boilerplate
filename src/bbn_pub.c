@@ -13,18 +13,6 @@ bool bbn_derive_pubkey(uint32_t *bip32_path,
                        uint8_t bip32_path_len,
                        uint32_t bip32_pubkey_version,
                        uint8_t *out_pubkey) {
-    // uint8_t spk[32] = {
-    // 0xdc, 0x8d, 0x2f, 0x9e, 0xff, 0x0c, 0x4f, 0x4d,
-    // 0xbd, 0xe0, 0x70, 0xa4, 0x8e, 0x33, 0x0e, 0xfc,
-    // 0x90, 0x8b, 0x62, 0xa7, 0x66, 0x56, 0x8d, 0x91,
-    // 0xe6, 0x58, 0xf2, 0x84, 0xb3, 0x24, 0xb8, 0x78
-    // };
-    
-    // memcpy(staker_pk_out, spk, 32);
-    // PRINTF("Using hardcoded staker public key: ");
-    // PRINTF_BUF(staker_pk_out, 32);
-    // return true;
-
     serialized_extended_pubkey_t xpub;
     if (0 > get_extended_pubkey_at_path(bip32_path,
                                         bip32_path_len,
@@ -37,6 +25,32 @@ bool bbn_derive_pubkey(uint32_t *bip32_path,
     memcpy(out_pubkey, expected_key, 32);
     PRINTF("bbn_derive_pubkey out_pubkey: ");
     PRINTF_BUF(out_pubkey, 32);
-    g_bbn_data.has_staker_pk = true;
     return true;
+}
+
+void extract_full_path_from_derivation_info(const derivation_info_t *derivation_info, 
+                                           uint32_t *output_path, 
+                                           size_t *output_path_len) {
+    // 检查路径长度
+    if (derivation_info->derivation_len > MAX_BIP32_PATH_STEPS) {
+        PRINTF("Path too long: %d\n", derivation_info->derivation_len);
+        return;
+    }
+    
+    // 复制完整路径
+    *output_path_len = derivation_info->derivation_len;
+    for (size_t i = 0; i < derivation_info->derivation_len; i++) {
+        output_path[i] = derivation_info->key_origin[i];
+    }
+    
+    // 打印路径用于调试
+    PRINTF("Extracted path (len=%d): ", derivation_info->derivation_len);
+    for (size_t i = 0; i < derivation_info->derivation_len; i++) {
+        if (derivation_info->key_origin[i] & 0x80000000) {
+            PRINTF("%d' ", derivation_info->key_origin[i] & 0x7FFFFFFF);
+        } else {
+            PRINTF("%d ", derivation_info->key_origin[i]);
+        }
+    }
+    PRINTF("\n");
 }

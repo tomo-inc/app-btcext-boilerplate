@@ -3,6 +3,7 @@
 #include "../bitcoin_app_base/src/boilerplate/dispatcher.h"
 #include "../bitcoin_app_base/src/common/bitvector.h"
 #include "../bitcoin_app_base/src/common/psbt.h"
+#include "../bitcoin_app_base/src/common/read.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map_value.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkle_leaf_element.h"
@@ -102,168 +103,12 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     return false;
 }
 
-// validation logic specific to the example 'Foo' protocol
 static bool validate_transaction(dispatcher_context_t *dc,
                                  sign_psbt_state_t *st,
                                  const uint8_t internal_inputs[64],
                                  const uint8_t internal_outputs[64]) {
-    // check that all inputs are indeed internal, except one
-    g_bbn_data.g_input_index = -1;
-    for (unsigned int i = 0; i < st->n_inputs; i++) {
-        if (bitvector_get(internal_inputs, i) == 0) {
-            if (g_bbn_data.g_input_index != -1) {
-                PRINTF("More than one external input found\n");
-                SEND_SW(dc, SW_INCORRECT_DATA);
-                return false;
-            }
-            g_bbn_data.g_input_index = i;
-        }
-    }
-
-    if (g_bbn_data.g_input_index == -1) {
-        PRINTF("No external input found\n");
-        SEND_SW(dc, SW_INCORRECT_DATA);
-        return false;
-    }
-
-    // check that the external input is rawtr(key) where the key is m/86'/1'/99'
-
-    // obtain the commitment to the i-th output's map
-    if (0 > call_get_merkleized_map(dc,
-                                    st->inputs_root,
-                                    st->n_inputs,
-                                    g_bbn_data.g_input_index,
-                                    &g_bbn_data.g_input_map)) {
-        PRINTF("Failed to get input map\n");
-        return false;
-    }
-
-    if(!bbn_derive_pubkey(test_pubkey_path,5, BIP32_PUBKEY_VERSION,
-                      g_bbn_data.g_input_scriptPubKey)) {
-        PRINTF("Failed to derive pubkey\n");
-        return false;
-    }
-    PRINTF("g_bbn_data.g_input_scriptPubKey: ");
-    PRINTF_BUF(g_bbn_data.g_input_scriptPubKey, 32);
-    memcpy(g_bbn_data.staker_pk, g_bbn_data.g_input_scriptPubKey, 32);
+    PRINTF("Validating transaction\n");
     return true;
-    // Read the input's witness utxo
-    // uint8_t witness_utxo[8 + 1 + 34];  // 8 bytes amount; 1 byte length; 34 bytes P2TR Script
-
-    // if (8 + 1 + 34 != call_get_merkleized_map_value(dc,
-    //                                                 &external_input_map,
-    //                                                 (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
-    //                                                 sizeof((uint8_t[]) {PSBT_IN_WITNESS_UTXO}),
-    //                                                 witness_utxo,
-    //                                                 sizeof(witness_utxo))) {
-    //     PRINTF("Failed to get witness utxo, or invalid witness utxo\n");
-    //     SEND_SW(dc, SW_INCORRECT_DATA);
-    // };
-    // if (witness_utxo[8] != 34) {
-    //     PRINTF("Unexpected scriptPubKey length in witness utxo: %d\n", witness_utxo[8]);
-    //     SEND_SW(dc, SW_INCORRECT_DATA);
-    //     return false;
-    // }
-    // uint8_t *spk = witness_utxo + 9;
-
-    // magic_input_value = read_u64_le(witness_utxo, 0);
-
-    // serialized_extended_pubkey_t xpub;
-    // if (0 > get_extended_pubkey_at_path(magic_pubkey_path,
-    //                                     ARRAYLEN(magic_pubkey_path),
-    //                                     BIP32_PUBKEY_VERSION,
-    //                                     &xpub)) {
-    //     PRINTF("Failed getting bip32 pubkey\n");
-    //     SEND_SW(dc, SW_BAD_STATE);
-    //     return false;
-    // }
-    // uint8_t *expected_key = xpub.compressed_pubkey + 1;  // x-only key
-    // external_input_scriptPubKey[0] = 0x51;
-    // external_input_scriptPubKey[1] = 0x20;
-    // memcpy(external_input_scriptPubKey + 2, expected_key, 32);
-    // PRINTF("Expected scriptPubKey: ");
-    // PRINTF_BUF(external_input_scriptPubKey, 34);
-    // PRINTF_BUF(spk, 32);
-    // if (memcmp(spk, external_input_scriptPubKey, P2TR_SCRIPTPUBKEY_LEN) != 0) {
-    //     // the expected special input was not found
-    //     // PRINTF("Invalid scriptPubKey. Where's my magic?\n");
-
-    //     // SEND_SW(dc, SW_INCORRECT_DATA);
-    //     // return false;
-    // }
-
-    // check that all outputs are internal (that is, change), except one that is an OP_RETURN with
-    // the message "Foo"
-
-    // int external_output_index = -1;
-    // for (unsigned int i = 0; i < st->n_outputs; i++) {
-    //     if (bitvector_get(internal_outputs, i) == 0) {
-    //         if (external_output_index != -1) {
-    //             // PRINTF("More than one external output found\n");
-    //             // SEND_SW(dc, SW_INCORRECT_DATA);
-    //             // return false;
-    //         }
-    //         external_output_index = i;
-    //     }
-    // }
-
-    // if (external_output_index == -1) {
-    //     PRINTF("No external output found\n");
-    //     SEND_SW(dc, SW_INCORRECT_DATA);
-    //     return false;
-    // }
-
-    // this output is external. Verify that:
-    // - it is an OP_RETURN with the "FOO" message
-    // - the amount is 0
-
-    // // obtain the commitment to the i-th output's map
-    // merkleized_map_commitment_t output_map;
-    // if (0 > call_get_merkleized_map(dc,
-    //                                 st->outputs_root,
-    //                                 st->n_outputs,
-    //                                 external_output_index,
-    //                                 &output_map)) {
-    //     PRINTF("Failed to get output map\n");
-    //     return false;
-    // }
-
-    // // Read output amount
-    // uint8_t raw_amount[8];
-    // if (8 != call_get_merkleized_map_value(dc,
-    //                                        &output_map,
-    //                                        (uint8_t[]) {PSBT_OUT_AMOUNT},
-    //                                        sizeof((uint8_t[]) {PSBT_OUT_AMOUNT}),
-    //                                        raw_amount,
-    //                                        sizeof(raw_amount))) {
-    //     SEND_SW(dc, SW_INCORRECT_DATA);
-    //     return false;
-    // }
-    // uint64_t amount = read_u64_le(raw_amount, 0);
-
-    // if (amount != 0) {
-    //     PRINTF("External output has non-zero amount\n");
-    //     SEND_SW(dc, SW_INCORRECT_DATA);
-    //     return false;
-    // }
-
-    // Read the output's scriptPubKey
-    // uint8_t scriptPubKey[32];
-    // // int result_len =
-    // call_get_merkleized_map_value(dc,
-    //                               &output_map,
-    //                               (uint8_t[]) {PSBT_OUT_SCRIPT},
-    //                               1,
-    //                               scriptPubKey,
-    //                               sizeof(scriptPubKey));
-    // if (result_len != sizeof(OP_RETURN_FOO) ||
-    //     memcmp(scriptPubKey, OP_RETURN_FOO, sizeof(OP_RETURN_FOO)) != 0) {
-    //     PRINTF("External output is not an OP_RETURN with the message 'FOO'\n");
-    //     SEND_SW(dc, SW_INCORRECT_DATA);
-    //     return false;
-    // }
-
-
 }
 
 /**
@@ -293,6 +138,16 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
     PRINTF("Validating and displaying transaction\n");
+    // get staker public key
+    // use path from psbt
+    if(!bbn_derive_pubkey(test_pubkey_path,5, BIP32_PUBKEY_VERSION,
+                      g_bbn_data.staker_pk)) {
+        PRINTF("Failed to derive pubkey\n");
+        return false;
+    }
+    PRINTF("g_bbn_data.staker_pk: ");
+    PRINTF_BUF(g_bbn_data.staker_pk, 32);
+    g_bbn_data.has_staker_pk = true;
 
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
         return false;
@@ -392,46 +247,97 @@ bool sign_custom_inputs(
     sign_psbt_state_t *st,
     tx_hashes_t *tx_hashes,
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
-    UNUSED(dc), UNUSED(st), UNUSED(tx_hashes), UNUSED(internal_inputs);
-
-    uint8_t sighash[32];
-    PRINTF("igning custom inputs %d\n", g_bbn_data.action_type);
-    // compute the sighash for the special input
-    uint8_t leafhash[32];
-    compute_bbn_leafhash_slashing(leafhash);
-    PRINTF("leafhash: ");
-    PRINTF_BUF(leafhash, sizeof(leafhash));
-
-    if (!compute_sighash_segwitv1(dc,
-                                  st,
-                                  tx_hashes,
-                                  &g_bbn_data.g_input_map,
-                                  g_bbn_data.g_input_index,
-                                  g_bbn_data.g_input_scriptPubKey,
-                                  sizeof(g_bbn_data.g_input_scriptPubKey),
-                                  leafhash,
-                                  SIGHASH_DEFAULT,
-                                  sighash)) {
-        PRINTF("Failed to compute the sighash\n");
-        return false;
+    PRINTF("Signing custom inputs\n");
+    PRINTF("st->n_inputs: %d\n", st->n_inputs);
+    
+    // 遍历所有输入，找到外部输入并签名
+    for (unsigned int i = 0; i < st->n_inputs; i++) {
+        if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
+            PRINTF("Signing external input %d\n", i);
+            
+            // 获取当前输入的map
+            merkleized_map_commitment_t input_map;
+            if (0 > call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, i, &input_map)) {
+                PRINTF("Failed to get input map for input %d\n", i);
+                return false;
+            }
+            
+            // 尝试从PSBT中提取BIP32派生路径
+            uint32_t extracted_path[MAX_BIP32_PATH_STEPS];
+            size_t extracted_path_len = 0;
+            bool path_found = false;
+            
+            // 从PSBT的BIP32_DERIVATION字段中提取路径
+            for (int psbt_idx = 0; psbt_idx < input_map.size; psbt_idx++) {
+                uint8_t key_data[128];
+                int key_len = call_get_merkle_leaf_element(dc, input_map.keys_root, input_map.size, psbt_idx, key_data, sizeof(key_data));
+                
+                if (key_len > 1 && (key_data[0] == PSBT_IN_BIP32_DERIVATION || key_data[0] == PSBT_IN_TAP_BIP32_DERIVATION)) {
+                    // 获取对应的值（包含fingerprint和路径）
+                    uint8_t value_data[128];
+                    int value_len = call_get_merkleized_map_value_at_index(dc, &input_map, psbt_idx, value_data, sizeof(value_data));
+                    
+                    if (value_len >= 4) {  // 至少包含fingerprint(4字节)
+                        uint32_t fingerprint = read_u32_be(value_data, 0);
+                        uint32_t master_fingerprint = crypto_get_master_key_fingerprint();
+                        
+                        if (fingerprint == master_fingerprint) {
+                            // 这是我们的密钥，提取路径
+                            extracted_path_len = (value_len - 4) / 4;  // 减去fingerprint，每个路径元素4字节
+                            
+                            for (size_t j = 0; j < extracted_path_len && j < MAX_BIP32_PATH_STEPS; j++) {
+                                extracted_path[j] = read_u32_be(value_data, 4 + j * 4);
+                            }
+                            
+                            path_found = true;
+                            PRINTF("Found BIP32 derivation path (len=%d)\n", extracted_path_len);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 选择使用的路径
+            const uint32_t *signing_path;
+            size_t signing_path_len;
+            
+            if (path_found && extracted_path_len > 0) {
+                signing_path = extracted_path;
+                signing_path_len = extracted_path_len;
+                PRINTF("Using extracted path from PSBT\n");
+            } else {
+                signing_path = test_pubkey_path;
+                signing_path_len = 5;
+                PRINTF("Using fallback hardcoded path\n");
+            }
+            
+            // 计算当前输入的sighash
+            uint8_t sighash[32];
+            uint8_t leafhash[32];
+            compute_bbn_leafhash_slashing(leafhash);
+            
+            if (!compute_sighash_segwitv1(dc, st, tx_hashes, 
+                                          &input_map,  // 当前输入的map
+                                          i,           // 当前输入的索引
+                                          g_bbn_data.g_input_scriptPubKey,
+                                          sizeof(g_bbn_data.g_input_scriptPubKey),
+                                          leafhash,
+                                          SIGHASH_DEFAULT,
+                                          sighash)) {
+                PRINTF("Failed to compute sighash for input %d\n", i);
+                return false;
+            }
+            
+            // 使用提取的或回退的路径进行签名
+            if (!sign_sighash_schnorr_and_yield(dc, st, i, signing_path, signing_path_len,
+                                                NULL, 0, leafhash, SIGHASH_DEFAULT, sighash)) {
+                PRINTF("Failed to sign input %d\n", i);
+                return false;
+            }
+            
+            PRINTF("Signed external input %d\n", i);
+        }
     }
- 
-    PRINTF("sighash: ");
-    PRINTF_BUF(sighash, sizeof(sighash));
-
-    if (!sign_sighash_schnorr_and_yield(dc,
-                                        st,
-                                        g_bbn_data.g_input_index,
-                                        test_pubkey_path,
-                                        5,
-                                        NULL,
-                                        0,
-                                        leafhash,
-                                        SIGHASH_DEFAULT,
-                                        sighash)) {
-        PRINTF("Signing failed\n");
-        return false;
-    }
-    PRINTF("sign_sighash_schnorr_and_yield\n");
+    
     return true;
 }
