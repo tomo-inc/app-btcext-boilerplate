@@ -3,7 +3,6 @@
 #include "../bitcoin_app_base/src/boilerplate/dispatcher.h"
 #include "../bitcoin_app_base/src/common/bitvector.h"
 #include "../bitcoin_app_base/src/common/psbt.h"
-#include "../bitcoin_app_base/src/common/read.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map_value.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkle_leaf_element.h"
@@ -194,6 +193,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
 
     switch (g_bbn_data.action_type) {
         case BBN_POLICY_SLASHING:
+        case BBN_POLICY_SLASHING_UNBONDING:
             PRINTF("bbn_check_slashing_address\n");
             if (!bbn_check_slashing_address(st, g_bbn_data.staker_pk)) {
                 PRINTF("bbn_check_slashing_address failed\n");
@@ -209,8 +209,16 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                 return false;
             }
             break;
-        default:
+        case BBN_POLICY_UNBOND:
+            PRINTF("bbn_check_unbond_address\n");
+            if (!bbn_check_unbond_address(st)) {
+                PRINTF("bbn_check_unbond_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
             break;
+        default:
+            return false;
     }
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
@@ -249,73 +257,35 @@ bool sign_custom_inputs(
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
     PRINTF("Signing custom inputs\n");
     PRINTF("st->n_inputs: %d\n", st->n_inputs);
-    
     // 遍历所有输入，找到外部输入并签名
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
             PRINTF("Signing external input %d\n", i);
-            
             // 获取当前输入的map
             merkleized_map_commitment_t input_map;
             if (0 > call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, i, &input_map)) {
                 PRINTF("Failed to get input map for input %d\n", i);
                 return false;
             }
-            
-            // 尝试从PSBT中提取BIP32派生路径
-            uint32_t extracted_path[MAX_BIP32_PATH_STEPS];
-            size_t extracted_path_len = 0;
-            bool path_found = false;
-            
-            // 从PSBT的BIP32_DERIVATION字段中提取路径
-            for (int psbt_idx = 0; psbt_idx < input_map.size; psbt_idx++) {
-                uint8_t key_data[128];
-                int key_len = call_get_merkle_leaf_element(dc, input_map.keys_root, input_map.size, psbt_idx, key_data, sizeof(key_data));
-                
-                if (key_len > 1 && (key_data[0] == PSBT_IN_BIP32_DERIVATION || key_data[0] == PSBT_IN_TAP_BIP32_DERIVATION)) {
-                    // 获取对应的值（包含fingerprint和路径）
-                    uint8_t value_data[128];
-                    int value_len = call_get_merkleized_map_value_at_index(dc, &input_map, psbt_idx, value_data, sizeof(value_data));
-                    
-                    if (value_len >= 4) {  // 至少包含fingerprint(4字节)
-                        uint32_t fingerprint = read_u32_be(value_data, 0);
-                        uint32_t master_fingerprint = crypto_get_master_key_fingerprint();
-                        
-                        if (fingerprint == master_fingerprint) {
-                            // 这是我们的密钥，提取路径
-                            extracted_path_len = (value_len - 4) / 4;  // 减去fingerprint，每个路径元素4字节
-                            
-                            for (size_t j = 0; j < extracted_path_len && j < MAX_BIP32_PATH_STEPS; j++) {
-                                extracted_path[j] = read_u32_be(value_data, 4 + j * 4);
-                            }
-                            
-                            path_found = true;
-                            PRINTF("Found BIP32 derivation path (len=%d)\n", extracted_path_len);
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // 选择使用的路径
-            const uint32_t *signing_path;
-            size_t signing_path_len;
-            
-            if (path_found && extracted_path_len > 0) {
-                signing_path = extracted_path;
-                signing_path_len = extracted_path_len;
-                PRINTF("Using extracted path from PSBT\n");
-            } else {
-                signing_path = test_pubkey_path;
-                signing_path_len = 5;
-                PRINTF("Using fallback hardcoded path\n");
-            }
-            
-            // 计算当前输入的sighash
             uint8_t sighash[32];
             uint8_t leafhash[32];
-            compute_bbn_leafhash_slashing(leafhash);
-            
+            switch (g_bbn_data.action_type) {
+                case BBN_POLICY_SLASHING:
+                case BBN_POLICY_SLASHING_UNBONDING:
+                    compute_bbn_leafhash_slashing(leafhash);
+                    PRINTF("leafhash BBN_POLICY_SLASHING BBN_POLICY_SLASHING_UNBONDING\n");
+                    break;
+                case BBN_POLICY_STAKE_TRANSFER:
+                    bbn_check_staking_address(leafhash);
+                    PRINTF("leafhash BBN_POLICY_STAKE_TRANSFER\n");
+                    break;
+                case BBN_POLICY_UNBOND:
+                    bbn_check_unbond_address(leafhash);
+                    PRINTF("leafhash BBN_POLICY_UNBOND\n");
+                    break;
+                default:
+                    break;
+            }
             if (!compute_sighash_segwitv1(dc, st, tx_hashes, 
                                           &input_map,  // 当前输入的map
                                           i,           // 当前输入的索引
@@ -327,9 +297,7 @@ bool sign_custom_inputs(
                 PRINTF("Failed to compute sighash for input %d\n", i);
                 return false;
             }
-            
-            // 使用提取的或回退的路径进行签名
-            if (!sign_sighash_schnorr_and_yield(dc, st, i, signing_path, signing_path_len,
+            if (!sign_sighash_schnorr_and_yield(dc, st, i, test_pubkey_path, 5,
                                                 NULL, 0, leafhash, SIGHASH_DEFAULT, sighash)) {
                 PRINTF("Failed to sign input %d\n", i);
                 return false;

@@ -27,30 +27,3 @@ bool bbn_derive_pubkey(uint32_t *bip32_path,
     PRINTF_BUF(out_pubkey, 32);
     return true;
 }
-
-void extract_full_path_from_derivation_info(const derivation_info_t *derivation_info, 
-                                           uint32_t *output_path, 
-                                           size_t *output_path_len) {
-    // 检查路径长度
-    if (derivation_info->derivation_len > MAX_BIP32_PATH_STEPS) {
-        PRINTF("Path too long: %d\n", derivation_info->derivation_len);
-        return;
-    }
-    
-    // 复制完整路径
-    *output_path_len = derivation_info->derivation_len;
-    for (size_t i = 0; i < derivation_info->derivation_len; i++) {
-        output_path[i] = derivation_info->key_origin[i];
-    }
-    
-    // 打印路径用于调试
-    PRINTF("Extracted path (len=%d): ", derivation_info->derivation_len);
-    for (size_t i = 0; i < derivation_info->derivation_len; i++) {
-        if (derivation_info->key_origin[i] & 0x80000000) {
-            PRINTF("%d' ", derivation_info->key_origin[i] & 0x7FFFFFFF);
-        } else {
-            PRINTF("%d ", derivation_info->key_origin[i]);
-        }
-    }
-    PRINTF("\n");
-}
