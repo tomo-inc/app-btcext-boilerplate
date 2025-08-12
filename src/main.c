@@ -18,8 +18,8 @@
 #include "bbn_address.h"
 #include "display.h"
 
-#define H 0x80000000
-static const uint32_t test_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
+
+//static const uint32_t test_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
 
 //#define P2TR_SCRIPTPUBKEY_LEN 34
 // records the value of the special input across calls
@@ -137,9 +137,12 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
     PRINTF("Validating and displaying transaction\n");
+    if(!bbn_get_final_path(g_bbn_data.derive_path, &g_bbn_data.derive_path_len)){
+        return false;
+    }
     // get staker public key
     // use path from psbt
-    if(!bbn_derive_pubkey(test_pubkey_path,5, BIP32_PUBKEY_VERSION,
+    if(!bbn_derive_pubkey(g_bbn_data.derive_path,g_bbn_data.derive_path_len, BIP32_PUBKEY_VERSION,
                       g_bbn_data.staker_pk)) {
         PRINTF("Failed to derive pubkey\n");
         return false;
@@ -297,7 +300,7 @@ bool sign_custom_inputs(
                 PRINTF("Failed to compute sighash for input %d\n", i);
                 return false;
             }
-            if (!sign_sighash_schnorr_and_yield(dc, st, i, test_pubkey_path, 5,
+            if (!sign_sighash_schnorr_and_yield(dc, st, i, g_bbn_data.derive_path, g_bbn_data.derive_path_len,
                                                 NULL, 0, leafhash, SIGHASH_DEFAULT, sighash)) {
                 PRINTF("Failed to sign input %d\n", i);
                 return false;

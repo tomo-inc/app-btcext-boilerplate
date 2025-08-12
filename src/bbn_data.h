@@ -83,6 +83,8 @@ typedef struct {
     //uint32_t g_input_index;
 
     merkleized_map_commitment_t output_map;
+    uint32_t derive_path[5];
+    uint8_t derive_path_len;
 } bbn_data_t;
 
 // 全局变量声明

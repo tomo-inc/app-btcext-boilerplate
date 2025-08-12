@@ -27,3 +27,13 @@ bool bbn_derive_pubkey(uint32_t *bip32_path,
     PRINTF_BUF(out_pubkey, 32);
     return true;
 }
+
+bool bbn_get_final_path(uint32_t *bip32_path, uint8_t *bip32_path_len)
+{
+    // get_extended_pubkey_from_client
+    #define H 0x80000000
+    static const uint32_t hardcode_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
+    memcpy(bip32_path, hardcode_pubkey_path, sizeof(hardcode_pubkey_path));
+    *bip32_path_len = 5;
+    return true;
+}
