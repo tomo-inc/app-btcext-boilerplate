@@ -142,13 +142,17 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
     // get staker public key
     // use path from psbt
+    uint8_t pubkey[32];
     if(!bbn_derive_pubkey(g_bbn_data.derive_path,g_bbn_data.derive_path_len, BIP32_PUBKEY_VERSION,
-                      g_bbn_data.staker_pk)) {
+                      pubkey)) {
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
     PRINTF("g_bbn_data.staker_pk: ");
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
+    // TODO:
+    // need to compare the staker pk in taproot script if have
+    memcpy(g_bbn_data.staker_pk, pubkey, 32);
     g_bbn_data.has_staker_pk = true;
 
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
@@ -181,9 +185,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             return false;
         }
     }
-    PRINTF("000 st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",
-           st->inputs_total_amount,
-           st->outputs.total_amount);
+
     if (!display_external_outputs(dc, st, internal_outputs)) {
         PRINTF("display_external_outputs fail \n");
         return false;
@@ -272,18 +274,22 @@ bool sign_custom_inputs(
             }
             uint8_t sighash[32];
             uint8_t leafhash[32];
+            uint8_t *pLeaf;
             switch (g_bbn_data.action_type) {
                 case BBN_POLICY_SLASHING:
                 case BBN_POLICY_SLASHING_UNBONDING:
                     compute_bbn_leafhash_slashing(leafhash);
+                    pLeaf = leafhash;
                     PRINTF("leafhash BBN_POLICY_SLASHING BBN_POLICY_SLASHING_UNBONDING\n");
                     break;
                 case BBN_POLICY_STAKE_TRANSFER:
-                    bbn_check_staking_address(leafhash);
+                    bbn_check_staking_address(st);
+                    pLeaf = NULL;
                     PRINTF("leafhash BBN_POLICY_STAKE_TRANSFER\n");
                     break;
                 case BBN_POLICY_UNBOND:
                     bbn_check_unbond_address(leafhash);
+                    pLeaf = leafhash;
                     PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
                 default:
@@ -294,7 +300,7 @@ bool sign_custom_inputs(
                                           i,           // 当前输入的索引
                                           g_bbn_data.g_input_scriptPubKey,
                                           sizeof(g_bbn_data.g_input_scriptPubKey),
-                                          leafhash,
+                                          pLeaf,
                                           SIGHASH_DEFAULT,
                                           sighash)) {
                 PRINTF("Failed to compute sighash for input %d\n", i);
