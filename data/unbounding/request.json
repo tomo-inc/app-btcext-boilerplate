@@ -1,0 +1,71 @@
+{
+    "result": {
+        "tx": {
+            "txid": "9398d6a13c45137acdd3547aa325916096c109bb20bb423e91988bd132e108ad",
+            "hash": "9398d6a13c45137acdd3547aa325916096c109bb20bb423e91988bd132e108ad",
+            "version": 2,
+            "size": 94,
+            "vsize": 94,
+            "weight": 376,
+            "locktime": 0,
+            "vin": [
+                {
+                    "txid": "a0dcd5c68e0d7e2bb6b15f4b822e0c572680cd0b10f9cdff4fae1693ad8aac14",
+                    "vout": 0,
+                    "scriptSig": {
+                        "asm": "",
+                        "hex": ""
+                    },
+                    "sequence": 4294967295
+                }
+            ],
+            "vout": [
+                {
+                    "value": 0.00058,
+                    "n": 0,
+                    "scriptPubKey": {
+                        "asm": "1 fe9bf053a4d62713926babe519b4273f2117fd7cd50a45c98f144272185fa361",
+                        "desc": "rawtr(fe9bf053a4d62713926babe519b4273f2117fd7cd50a45c98f144272185fa361)#v9grc0ly",
+                        "hex": "5120fe9bf053a4d62713926babe519b4273f2117fd7cd50a45c98f144272185fa361",
+                        "address": "bc1pl6dlq5ay6cn38ynt40j3ndp88us30ltu659ytjv0z3p8yxzl5dssmaycys",
+                        "type": "witness_v1_taproot"
+                    }
+                }
+            ]
+        },
+        "global_xpubs": [],
+        "psbt_version": 0,
+        "proprietary": [],
+        "unknown": {},
+        "inputs": [
+            {
+                "witness_utxo": {
+                    "amount": 0.0006,
+                    "scriptPubKey": {
+                        "asm": "1 bee120a81d9765ef9a7de05ef192f0342440ee1ab1ba3c69535e4d0c9393fad1",
+                        "desc": "rawtr(bee120a81d9765ef9a7de05ef192f0342440ee1ab1ba3c69535e4d0c9393fad1)#y768zwr6",
+                        "hex": "5120bee120a81d9765ef9a7de05ef192f0342440ee1ab1ba3c69535e4d0c9393fad1",
+                        "address": "bc1phmsjp2qajaj7lxnaup00ryhsxsjypms6kxarc62ntexseyunltgs3l2f3z",
+                        "type": "witness_v1_taproot"
+                    }
+                },
+                "taproot_scripts": [
+                    {
+                        "script": "20dc8d2f9eff0c4f4dbde070a48e330efc908b62a766568d91e658f284b324b878ad200aee0509b16db71c999238a4827db945526859b13c95487ab46725357c9a9f25ac20113c3a32a9d320b72190a04a020a0db3976ef36972673258e9a38a364f3dc3b0ba2017921cf156ccb4e73d428f996ed11b245313e37e27c978ac4d2cc21eca4672e4ba203bb93dfc8b61887d771f3630e9a63e97cbafcfcc78556a474df83a31a0ef899cba2040afaf47c4ffa56de86410d8e47baa2bb6f04b604f4ea24323737ddc3fe092dfba2079a71ffd71c503ef2e2f91bccfc8fcda7946f4653cef0d9f3dde20795ef3b9f0ba20d21faf78c6751a0d38e6bd8028b907ff07e9a869a43fc837d6b3f8dff6119a36ba20f5199efae3f28bb82476163a7e458c7ad445d9bffb0682d10d3bdb2cb41f8e8eba20fa9d882d45f4060bdb8042183828cd87544f1ea997380e586cab77d5fd698737ba569c",
+                        "leaf_ver": 192,
+                        "control_blocks": [
+                            "c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac068943b12a8c7551c6989147cbc353ff811a333b220062c709654618852d78a8eed62ce04e4760cb7dc4b61579e160bc834837a2ef86b50eb29fc0d9552368a45"
+                        ]
+                    }
+                ],
+                "taproot_internal_key": "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
+            }
+        ],
+        "outputs": [
+            {}
+        ],
+        "fee": 2.0e-5
+    },
+    "error": null,
+    "id": null
+}

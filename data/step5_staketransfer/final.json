@@ -1,0 +1,76 @@
+{
+    "result": {
+        "tx": {
+            "txid": "701b9a280257b906c3b3fd5b70ddcac8b5422466d51e30c6763686947b401dff",
+            "hash": "701b9a280257b906c3b3fd5b70ddcac8b5422466d51e30c6763686947b401dff",
+            "version": 2,
+            "size": 137,
+            "vsize": 137,
+            "weight": 548,
+            "locktime": 0,
+            "vin": [
+                {
+                    "txid": "38cf7dae253a9bb9214548e1dd3b27c6af4d99d5d0c7fa86039a030e4875030a",
+                    "vout": 0,
+                    "scriptSig": {
+                        "asm": "",
+                        "hex": ""
+                    },
+                    "sequence": 4294967295
+                }
+            ],
+            "vout": [
+                {
+                    "value": 0.0005,
+                    "n": 0,
+                    "scriptPubKey": {
+                        "asm": "1 d763de6b471e305641ba41d65c6782e8cbcff6e08e83daab0da1275bbc9faad0",
+                        "desc": "rawtr(d763de6b471e305641ba41d65c6782e8cbcff6e08e83daab0da1275bbc9faad0)#ssaq4a53",
+                        "hex": "5120d763de6b471e305641ba41d65c6782e8cbcff6e08e83daab0da1275bbc9faad0",
+                        "address": "bc1p6a3au668rcc9vsd6g8t9ceuzar9ulahq36pa42cd5yn4h0yl4tgqhvey2v",
+                        "type": "witness_v1_taproot"
+                    }
+                },
+                {
+                    "value": 0.0294966,
+                    "n": 1,
+                    "scriptPubKey": {
+                        "asm": "1 740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5",
+                        "desc": "rawtr(740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5)#n07nwav0",
+                        "hex": "5120740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5",
+                        "address": "bc1pws8wvnj99ca6acf8kq7pjk7vyxknah0d9mexckh5s0vu2ccy68jsj4d4x3",
+                        "type": "witness_v1_taproot"
+                    }
+                }
+            ]
+        },
+        "global_xpubs": [],
+        "psbt_version": 0,
+        "proprietary": [],
+        "unknown": {},
+        "inputs": [
+            {
+                "witness_utxo": {
+                    "amount": 0.03,
+                    "scriptPubKey": {
+                        "asm": "1 740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5",
+                        "desc": "rawtr(740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5)#n07nwav0",
+                        "hex": "5120740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5",
+                        "address": "bc1pws8wvnj99ca6acf8kq7pjk7vyxknah0d9mexckh5s0vu2ccy68jsj4d4x3",
+                        "type": "witness_v1_taproot"
+                    }
+                },
+                "final_scriptwitness": [
+                    "721e5666db89138bc24a23e19a6f38ac4c70784920e430f8839b55d108bb59c329a976a870c26b635c06bfa780862dc5b52e71942a3cc594689652062b2876b3"
+                ]
+            }
+        ],
+        "outputs": [
+            {},
+            {}
+        ],
+        "fee": 3.4e-6
+    },
+    "error": null,
+    "id": null
+}
