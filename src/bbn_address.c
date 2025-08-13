@@ -144,8 +144,10 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
         return false;
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    if (fee < g_bbn_data.unbonding_fee_limit) {
-        PRINTF("Fee too low\n");
+    if (fee != g_bbn_data.unbonding_fee_limit) {
+        PRINTF("Unbond Fee: %d\n", (uint32_t)fee);
+        PRINTF("Unbond Fee Limit: %d\n", (uint32_t)g_bbn_data.unbonding_fee_limit);
+        PRINTF("Unbond Fee not match\n");
         return false;
     }
     compute_bbn_unbond_root(merkle_root);
@@ -167,9 +169,9 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
 
     if (memcmp(out_scriptPubKey + 2, tweaked_pubkey, 32)) {
         PRINTF("Tweaked public key:\n");
-        // PRINTF_BUF(tweaked_pubkey, 32);
+        PRINTF_BUF(tweaked_pubkey, 32);
         PRINTF("out_scriptPubKey_len: %d\n", out_scriptPubKey_len);
-        // PRINTF_BUF(out_scriptPubKey + 2, 32);
+        PRINTF_BUF(out_scriptPubKey + 2, 32);
         PRINTF("bbn_check_unbond tweak public key cmp fail\n");
         return false;
     }

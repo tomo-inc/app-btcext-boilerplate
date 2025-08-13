@@ -19,17 +19,6 @@
 #include "display.h"
 
 
-//static const uint32_t test_pubkey_path[] = {86 ^ H, 1 ^ H, 0 ^ H, 0, 0};  // m/86'/1'/0'/0/0
-
-//#define P2TR_SCRIPTPUBKEY_LEN 34
-// records the value of the special input across calls
-//static int external_input_index; 
-//static merkleized_map_commitment_t external_input_map;
-//static uint8_t external_input_scriptPubKey[P2TR_SCRIPTPUBKEY_LEN];
-
-#define INS_CUSTOM_XOR 0xbb
-#define CHUNK_SIZE     64
-
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
     uint8_t data_merkle_root[32];
@@ -39,8 +28,8 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
         return false;
     }
 
-    if (cmd->ins == INS_CUSTOM_XOR) {
-        PRINTF("Handling custom APDU INS_CUSTOM_XOR\n");
+    if (cmd->ins == INS_CUSTOM_TLV) {
+        PRINTF("Handling custom APDU INS_CUSTOM_TLV\n");
         PRINTF("&dc->read_buffer %x\n", &dc->read_buffer);
         PRINTF_BUF(&dc->read_buffer, dc->read_buffer.size);
 
@@ -283,12 +272,11 @@ bool sign_custom_inputs(
                     PRINTF("leafhash BBN_POLICY_SLASHING BBN_POLICY_SLASHING_UNBONDING\n");
                     break;
                 case BBN_POLICY_STAKE_TRANSFER:
-                    bbn_check_staking_address(st);
                     pLeaf = NULL;
                     PRINTF("leafhash BBN_POLICY_STAKE_TRANSFER\n");
                     break;
                 case BBN_POLICY_UNBOND:
-                    bbn_check_unbond_address(leafhash);
+                    compute_bbn_leafhash_unbonding(leafhash);
                     pLeaf = leafhash;
                     PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
