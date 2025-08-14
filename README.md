@@ -1,3 +1,7 @@
+# Ledger firmware of Babylon Staking
+
+Base on Ledger BTC boilerplate to implement babylon staking contract application.
+
 # Ledger Boilerplate for Bitcoin Smart Contract Applications
 
 This is a boilerplate application which can be forked to start a new project for Ledger devices that can sign specialized types of bitcoin transactions, while building on top of the tooling of the Ledger Bitcoin application.

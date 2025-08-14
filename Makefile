@@ -20,35 +20,39 @@
 ########################################
 
 # Application version
-APPVERSION_M = 0
-APPVERSION_N = 1
+APPVERSION_M = 2
+APPVERSION_N = 0
 APPVERSION_P = 0
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
-APPDEVELOPPER = "Ledger"
-APPCOPYRIGHT = "(c) 2025 Ledger"
+APPDEVELOPPER="Tomo"
+APPCOPYRIGHT="(c) 2025 Tomo"
 
-# Setting to allow building variant applications
-VARIANT_PARAM = COIN
-VARIANT_VALUES = btcext_boilerplate btcext_boilerplate_testnet
+VARIANT_VALUES = BBNST BBNST_test
+
+# Application source files
+# There is no additional sources for bitcoin
+#APP_SOURCE_PATH += src/
 
 # simplify for tests
 ifndef COIN
-COIN = btcext_boilerplate_testnet
+COIN=BBNST_test
 endif
 
 # Enabling DEBUG flag will enable PRINTF and disable optimizations
-#DEBUG = 1
+DEBUG = 1
 
-APP_DESCRIPTION = "This app enables signing\nFoo transactions\nfor all you Fools."
+APP_DESCRIPTION ="This app enables staking Bitcoin with Babylon"
 
-ifeq ($(COIN),btcext_boilerplate)
-APPNAME = "Btcext Boilerplate"
-BITCOIN_NETWORK = mainnet
+ifeq ($(COIN),BBNST)
+APPNAME ="Babylon BTC Staking"
+BITCOIN_NETWORK =mainnet
+ DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
 
-else ifeq ($(COIN),btcext_boilerplate_testnet)
-APPNAME = "Btcext Boilerplate Testnet"
-BITCOIN_NETWORK = testnet
+else ifeq ($(COIN),BBNST_test)
+APPNAME ="Babylon BTC Test"
+BITCOIN_NETWORK =testnet
+DEFINES   += BIP32_PUBKEY_VERSION=0x043587CF
 
 else ifeq ($(filter clean,$(MAKECMDGOALS)),)
 $(error Unsupported COIN - use $(VARIANT_VALUES))
@@ -58,9 +62,9 @@ APP_SOURCE_PATH += bitcoin_app_base/src src
 
 # Application icons following guidelines:
 # https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
-ICON_NANOX = icons/nanox_app_foo.gif
-ICON_NANOSP = icons/nanox_app_foo.gif
-ICON_STAX = icons/stax_app_foo.gif
-ICON_FLEX = icons/flex_app_foo.gif
+ICON_NANOX = icons/nanox_app_babylon.gif
+ICON_NANOSP = icons/nanox_app_babylon.gif
+ICON_STAX = icons/stax_app_babylon.gif
+ICON_FLEX = icons/flex_app_babylon.gif
 
 include bitcoin_app_base/Makefile
