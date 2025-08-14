@@ -53,7 +53,7 @@ bool bbn_check_staking_address(sign_psbt_state_t *st) {
 bool bbn_check_slashing_address(sign_psbt_state_t *st, uint8_t *staker_pk) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
- 
+
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
 
     if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk) {
@@ -145,8 +145,8 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     if (fee != g_bbn_data.unbonding_fee_limit) {
-        PRINTF("Unbond Fee: %d\n", (uint32_t)fee);
-        PRINTF("Unbond Fee Limit: %d\n", (uint32_t)g_bbn_data.unbonding_fee_limit);
+        PRINTF("Unbond Fee: %d\n", (uint32_t) fee);
+        PRINTF("Unbond Fee Limit: %d\n", (uint32_t) g_bbn_data.unbonding_fee_limit);
         PRINTF("Unbond Fee not match\n");
         return false;
     }

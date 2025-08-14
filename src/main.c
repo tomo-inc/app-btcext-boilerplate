@@ -18,7 +18,6 @@
 #include "bbn_address.h"
 #include "display.h"
 
-
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
     uint8_t data_merkle_root[32];
@@ -126,14 +125,16 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
     PRINTF("Validating and displaying transaction\n");
-    if(!bbn_get_final_path(g_bbn_data.derive_path, &g_bbn_data.derive_path_len)){
+    if (!bbn_get_final_path(g_bbn_data.derive_path, &g_bbn_data.derive_path_len)) {
         return false;
     }
     // get staker public key
     // use path from psbt
     uint8_t pubkey[32];
-    if(!bbn_derive_pubkey(g_bbn_data.derive_path,g_bbn_data.derive_path_len, BIP32_PUBKEY_VERSION,
-                      pubkey)) {
+    if (!bbn_derive_pubkey(g_bbn_data.derive_path,
+                           g_bbn_data.derive_path_len,
+                           BIP32_PUBKEY_VERSION,
+                           pubkey)) {
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
@@ -211,6 +212,8 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                 return false;
             }
             break;
+        case BBN_POLICY_WITHDRAW:
+            break;
         default:
             return false;
     }
@@ -280,10 +283,17 @@ bool sign_custom_inputs(
                     pLeaf = leafhash;
                     PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
+                case BBN_POLICY_WITHDRAW:
+                    compute_bbn_leafhash_timelock(leafhash);
+                    pLeaf = leafhash;
+                    PRINTF("leafhash BBN_POLICY_UNBOND\n");
+                    break;
                 default:
                     break;
             }
-            if (!compute_sighash_segwitv1(dc, st, tx_hashes, 
+            if (!compute_sighash_segwitv1(dc,
+                                          st,
+                                          tx_hashes,
                                           &input_map,  // 当前输入的map
                                           i,           // 当前输入的索引
                                           g_bbn_data.g_input_scriptPubKey,
@@ -294,15 +304,23 @@ bool sign_custom_inputs(
                 PRINTF("Failed to compute sighash for input %d\n", i);
                 return false;
             }
-            if (!sign_sighash_schnorr_and_yield(dc, st, i, g_bbn_data.derive_path, g_bbn_data.derive_path_len,
-                                                NULL, 0, leafhash, SIGHASH_DEFAULT, sighash)) {
+            if (!sign_sighash_schnorr_and_yield(dc,
+                                                st,
+                                                i,
+                                                g_bbn_data.derive_path,
+                                                g_bbn_data.derive_path_len,
+                                                NULL,
+                                                0,
+                                                leafhash,
+                                                SIGHASH_DEFAULT,
+                                                sighash)) {
                 PRINTF("Failed to sign input %d\n", i);
                 return false;
             }
-            
+
             PRINTF("Signed external input %d\n", i);
         }
     }
-    
+
     return true;
 }
