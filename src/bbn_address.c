@@ -1,8 +1,10 @@
 #include <stdbool.h>
+#include <string.h>  // 添加这行
 #include <inttypes.h>
 #include <stddef.h>
 #include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
+#include "bbn_pub.h"
 #include "bbn_script.h"
 #include "bbn_def.h"
 #include "bbn_data.h"
@@ -48,17 +50,22 @@ bool bbn_check_staking_address(sign_psbt_state_t *st) {
     return true;
 }
 
-bool bbn_check_slashing_address(sign_psbt_state_t *st) {
+bool bbn_check_slashing_address(sign_psbt_state_t *st, uint8_t *staker_pk) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
 
+    PRINTF_BUF(g_bbn_data.staker_pk, 32);
+
     if (!g_bbn_data.has_timelock || !g_bbn_data.has_staker_pk) {
-        PRINTF("Missing required data for staking address check\n");
+        PRINTF("Missing required data for slashing address check\n");
         return false;
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     if (fee < g_bbn_data.slashing_fee_limit) {
-        PRINTF("Fee too low\n");
+        PRINTF("inputs_total_amount=%d,total_amount=%d\n",
+               st->inputs_total_amount,
+               st->outputs.total_amount);
+        PRINTF("Fee too low fee=%d limit=%d\n", fee, g_bbn_data.slashing_fee_limit);
         return false;
     }
 
@@ -89,15 +96,17 @@ bool bbn_check_slashing_address(sign_psbt_state_t *st) {
         PRINTF("tweak public key cmp fail\n");
         return false;
     }
-    if (!g_bbn_data.has_slashing_address) {
+    if (!g_bbn_data.has_burn_address) {
         PRINTF("Slashing address not found\n");
         return false;
     }
 
-    if (memcmp(st->outputs.output_scripts[0], g_bbn_data.slashing_address, 32)) {
-        PRINTF("Slashing burn address:\n");
-        PRINTF_BUF(g_bbn_data.slashing_address, 32);
-        PRINTF_BUF(st->outputs.output_scripts[0], 32);
+    if (memcmp(st->outputs.output_scripts[0],
+               g_bbn_data.burn_address,
+               g_bbn_data.burn_address_len)) {
+        PRINTF("Slashing burn address: %d\n", g_bbn_data.burn_address_len);
+        PRINTF_BUF(g_bbn_data.burn_address, g_bbn_data.burn_address_len);
+        PRINTF_BUF(st->outputs.output_scripts[0], g_bbn_data.burn_address_len);
         PRINTF("tweak public key cmp fail\n");
         return false;
     }
@@ -116,7 +125,7 @@ static void compute_bbn_unbond_root(uint8_t *roothash) {
     uint8_t slashing_leafhash[32];
     uint8_t timelock_leafhash[32];
 
-    compute_bbn_leafhash_slasing(slashing_leafhash);
+    compute_bbn_leafhash_slashing(slashing_leafhash);
     compute_bbn_leafhash_timelock(timelock_leafhash);
     crypto_tr_combine_taptree_hashes(slashing_leafhash, timelock_leafhash, roothash);
 }
@@ -135,8 +144,10 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
         return false;
     }
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    if (fee < g_bbn_data.unbonding_fee_limit) {
-        PRINTF("Fee too low\n");
+    if (fee != g_bbn_data.unbonding_fee_limit) {
+        PRINTF("Unbond Fee: %d\n", (uint32_t) fee);
+        PRINTF("Unbond Fee Limit: %d\n", (uint32_t) g_bbn_data.unbonding_fee_limit);
+        PRINTF("Unbond Fee not match\n");
         return false;
     }
     compute_bbn_unbond_root(merkle_root);
@@ -158,9 +169,9 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
 
     if (memcmp(out_scriptPubKey + 2, tweaked_pubkey, 32)) {
         PRINTF("Tweaked public key:\n");
-        // PRINTF_BUF(tweaked_pubkey, 32);
+        PRINTF_BUF(tweaked_pubkey, 32);
         PRINTF("out_scriptPubKey_len: %d\n", out_scriptPubKey_len);
-        // PRINTF_BUF(out_scriptPubKey + 2, 32);
+        PRINTF_BUF(out_scriptPubKey + 2, 32);
         PRINTF("bbn_check_unbond tweak public key cmp fail\n");
         return false;
     }

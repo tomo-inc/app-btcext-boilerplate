@@ -185,7 +185,38 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
                     PRINTF("  -> Invalid Unbonding Fee Limit length\n");
                 }
                 break;
-
+            case TAG_MESSAGE:
+                if (length <= sizeof(g_bbn_data.message)) {
+                    PRINTF("  -> Message: ");
+                    PRINTF_BUF(value, length);
+                    memcpy(g_bbn_data.message, value, length);
+                    g_bbn_data.has_message = true;
+                    g_bbn_data.message_len = length;
+                } else {
+                    PRINTF("  -> Message length exceeds maximum size\n");
+                }
+                break;
+            case TAG_TXID:
+                if (length == 32) {
+                    PRINTF("  -> Transaction ID: ");
+                    PRINTF_BUF(value, 32);
+                    memcpy(g_bbn_data.txid, value, 32);
+                    g_bbn_data.has_txid = true;
+                } else {
+                    PRINTF("  -> Invalid Transaction ID length\n");
+                }
+                break;
+            case TAG_BURN_ADDRESS:
+                if (length >= 1 && length <= 32) {
+                    PRINTF("  -> Burning Address (%d bytes): ", length);
+                    PRINTF_BUF(value, length);
+                    memcpy(g_bbn_data.burn_address, value, length);
+                    g_bbn_data.has_burn_address = true;
+                    g_bbn_data.burn_address_len = length;
+                } else {
+                    PRINTF("  -> Invalid Burning Address length\n");
+                }
+                break;
             default:
                 PRINTF("  -> Unknown TAG: 0x%02x\n", tag);
                 break;

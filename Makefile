@@ -68,3 +68,16 @@ ICON_STAX = icons/stax_app_babylon.gif
 ICON_FLEX = icons/flex_app_babylon.gif
 
 include bitcoin_app_base/Makefile
+
+# Unit tests target
+.PHONY: test
+test:
+	cd unit-tests && ./build.sh
+
+.PHONY: test-coverage
+test-coverage:
+	cd unit-tests && ./build_coverage.sh
+
+.PHONY: test-clean
+test-clean:
+	rm -rf unit-tests/build unit-tests/build_coverage

@@ -1,0 +1,71 @@
+{
+    "result": {
+        "tx": {
+            "txid": "8edbc168768d7fb33f36e00ba9e0d947ed3a08ed699e5ab078e6f6f6948f52c4",
+            "hash": "8edbc168768d7fb33f36e00ba9e0d947ed3a08ed699e5ab078e6f6f6948f52c4",
+            "version": 2,
+            "size": 94,
+            "vsize": 94,
+            "weight": 376,
+            "locktime": 0,
+            "vin": [
+                {
+                    "txid": "f76077de616c8edc916a17952bd200c99e2db4b187b5976b6a1c586d1607f6e1",
+                    "vout": 0,
+                    "scriptSig": {
+                        "asm": "",
+                        "hex": ""
+                    },
+                    "sequence": 1008
+                }
+            ],
+            "vout": [
+                {
+                    "value": 0.00047712,
+                    "n": 0,
+                    "scriptPubKey": {
+                        "asm": "1 740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5",
+                        "desc": "rawtr(740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5)#n07nwav0",
+                        "hex": "5120740ee64e452e3baee127b03c195bcc21ad3edded2ef26c5af483d9c56304d1e5",
+                        "address": "bc1pws8wvnj99ca6acf8kq7pjk7vyxknah0d9mexckh5s0vu2ccy68jsj4d4x3",
+                        "type": "witness_v1_taproot"
+                    }
+                }
+            ]
+        },
+        "global_xpubs": [],
+        "psbt_version": 0,
+        "proprietary": [],
+        "unknown": {},
+        "inputs": [
+            {
+                "witness_utxo": {
+                    "amount": 0.00048,
+                    "scriptPubKey": {
+                        "asm": "1 05267f5d46d0f58a7eae30788acbb5905f41c66c392fe12298cf54eed13338c3",
+                        "desc": "rawtr(05267f5d46d0f58a7eae30788acbb5905f41c66c392fe12298cf54eed13338c3)#njg506k4",
+                        "hex": "512005267f5d46d0f58a7eae30788acbb5905f41c66c392fe12298cf54eed13338c3",
+                        "address": "bc1pq5n87h2x6r6c5l4wxpug4ja4jp05r3nv8yh7zg5cea2wa5fn8rps4kyv5w",
+                        "type": "witness_v1_taproot"
+                    }
+                },
+                "taproot_scripts": [
+                    {
+                        "script": "20dc8d2f9eff0c4f4dbde070a48e330efc908b62a766568d91e658f284b324b878ad02f003b2",
+                        "leaf_ver": 192,
+                        "control_blocks": [
+                            "c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac04ff63c1966acfc9afcfd922449fee7696a38ac3926ce096db9633fdd0430ca9b"
+                        ]
+                    }
+                ],
+                "taproot_internal_key": "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
+            }
+        ],
+        "outputs": [
+            {}
+        ],
+        "fee": 2.88e-6
+    },
+    "error": null,
+    "id": null
+}

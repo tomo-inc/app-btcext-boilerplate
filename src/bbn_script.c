@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/crypto.h"
+#include "../bitcoin_app_base/src/common/merkle.h"
 #include "bbn_def.h"
 #include "bbn_data.h"
 #include "bbn_script.h"
@@ -78,7 +79,7 @@ static int encode_minimal_push(uint32_t value, uint8_t *buffer) {
     return size;
 }
 
-bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
+bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
@@ -98,6 +99,7 @@ bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
         for (int i = 0; i < g_bbn_data.fp_count; i++) {
             memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
             offset += 32;
+            tapscript[offset++] = 0xad;  // TODO confirm multi FP is single sig or multi-sig
         }
     } else {
         return false;
@@ -124,7 +126,8 @@ bool compute_bbn_leafhash_slasing(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-
+    PRINTF("tapscript length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
@@ -172,14 +175,21 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
 }
 
 bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
+    PRINTF("compute_bbn_leafhash_timelock\n");
+
     uint8_t tapscript[1024] = {0};
     int offset = 0;
+
+    PRINTF("compute_bbn_leafhash_timelock staker_pk:\n");
+    PRINTF_BUF(g_bbn_data.staker_pk, 32);
 
     tapscript[offset++] = 0x20;
     if (g_bbn_data.has_staker_pk)
         memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
-    else
+    else {
+        PRINTF("No timelock has_staker_pk\n");
         return false;
+    }
 
     offset += 32;
     tapscript[offset++] = 0xad;
@@ -192,9 +202,12 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         offset += len;
         tapscript[offset++] = 0xb2;
     } else {
+        PRINTF("No timelock found\n");
         return false;
     }
-
+    PRINTF("timelock: %d\n", (uint32_t) g_bbn_data.timelock);
+    PRINTF("tap length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
 }
@@ -204,7 +217,7 @@ void compute_bbn_merkle_root(uint8_t *roothash) {
     uint8_t unbonding_leafhash[32];
     uint8_t timelock_leafhash[32];
 
-    compute_bbn_leafhash_slasing(slashing_leafhash);
+    compute_bbn_leafhash_slashing(slashing_leafhash);
     compute_bbn_leafhash_unbonding(unbonding_leafhash);
     compute_bbn_leafhash_timelock(timelock_leafhash);
 

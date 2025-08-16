@@ -1,7 +1,12 @@
+#pragma once
+
+#include <stdint.h>
+#include <stdbool.h>  // 添加这行
+
 #ifndef BBN_SCRIPT_H
 #define BBN_SCRIPT_H
 
-bool compute_bbn_leafhash_slasing(uint8_t *leafhash);
+bool compute_bbn_leafhash_slashing(uint8_t *leafhash);
 
 bool compute_bbn_leafhash_unbonding(uint8_t *leafhash);
 
