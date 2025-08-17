@@ -277,8 +277,7 @@ bool __attribute__((noinline)) display_external_outputs(
                                                      st,
                                                      cur_output_index,
                                                      out_scriptPubKey,
-                                                     &out_scriptPubKey_len,
-                                                     &out_amount)) {
+                                                     &out_scriptPubKey_len)) {
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
@@ -309,9 +308,8 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
                                   sign_psbt_state_t *st,
                                   size_t output_index,
                                   uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-                                  size_t *out_scriptPubKey_len,
-                                  uint64_t *out_amount) {
-    //if (out_scriptPubKey == NULL || out_amount == NULL) {
+                                  size_t *out_scriptPubKey_len) {
+    // if (out_scriptPubKey == NULL || out_amount == NULL) {
     if (out_scriptPubKey == NULL) {
         PRINTF("get_output_script_and_amount: out_scriptPubKey or out_amount is NULL\n");
         SEND_SW(dc, SW_BAD_STATE);
@@ -372,7 +370,7 @@ bool __attribute__((noinline)) display_output(
     const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
     size_t out_scriptPubKey_len,
     uint64_t out_amount) {
-    PRINTF("display output enter\n");    
+    PRINTF("display output enter\n");
     (void) cur_output_index;
 
     // show this output's address
@@ -445,10 +443,16 @@ bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
     return true;
 }
 
-int convert_bits(uint8_t* out, size_t* outlen, int outbits, const uint8_t* in, size_t inlen, int inbits, int pad) {
+int convert_bits(uint8_t *out,
+                 size_t *outlen,
+                 int outbits,
+                 const uint8_t *in,
+                 size_t inlen,
+                 int inbits,
+                 int pad) {
     uint32_t val = 0;
     int bits = 0;
-    uint32_t maxv = (((uint32_t)1) << outbits) - 1;
+    uint32_t maxv = (((uint32_t) 1) << outbits) - 1;
     while (inlen--) {
         val = (val << inbits) | *(in++);
         bits += inbits;
@@ -482,12 +486,12 @@ bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
                   BECH32_ENCODING_BECH32);  // bech32 encode the message
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
-    const char *name = "message"; 
+    const char *name = "message";
     uint8_t s_name[64];
-    uint8_t s_value[128]; 
+    uint8_t s_value[128];
 
     snprintf((char *) s_value, sizeof(s_value), "%s", message_str);
-    snprintf((char *) s_name, sizeof(s_name), "%s", name);   
+    snprintf((char *) s_name, sizeof(s_name), "%s", name);
     // Setup data to display
     pairs[0].item = (const char *) s_name;
     pairs[0].value = (const char *) s_value;

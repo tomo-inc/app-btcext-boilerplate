@@ -33,8 +33,7 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
                                   sign_psbt_state_t *st,
                                   size_t output_index,
                                   uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-                                  size_t *out_scriptPubKey_len,
-                                  uint64_t *out_amount);
+                                  size_t *out_scriptPubKey_len);
 
 bool __attribute__((noinline)) display_output(
     dispatcher_context_t *dc,

@@ -44,9 +44,14 @@ bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, 
 bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
                              const merkleized_map_commitment_t *input_map,
                              uint8_t *leaf_script,
-                             size_t leaf_script_len) {
+                             int32_t leaf_script_len) {
     uint8_t buf[256];
-    int len = call_get_merkleized_map_value(dc, input_map, (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT}, 1, buf, sizeof(buf));
+    int32_t len = call_get_merkleized_map_value(dc,
+                                                input_map,
+                                                (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT},
+                                                1,
+                                                buf,
+                                                sizeof(buf));
     if (len < 0 || len > leaf_script_len) {
         SEND_SW(dc, SW_INCORRECT_DATA);
         return false;
@@ -127,14 +132,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     return false;
 }
 
-static bool validate_transaction(dispatcher_context_t *dc,
-                                 sign_psbt_state_t *st,
-                                 const uint8_t internal_inputs[64],
-                                 const uint8_t internal_outputs[64]) {
-    PRINTF("Validating transaction\n");
-    return true;
-}
-
 /**
  * @brief Validates and displays the transaction's Clear Signing UX for user confirmation.
  *
@@ -161,17 +158,19 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       sign_psbt_state_t *st,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
+    UNUSED(internal_inputs);
     PRINTF("Validating and displaying transaction\n");
-    if (!bbn_get_final_path(g_bbn_data.derive_path, &g_bbn_data.derive_path_len)) {
-        return false;
+    PRINTF("g_bbn_data.derive_path_len: %d\n", g_bbn_data.derive_path_len);
+    PRINTF("g_bbn_data.derive_path: ");
+    for (size_t i = 0; i < g_bbn_data.derive_path_len; i++) {
+        PRINTF("0x%x ", g_bbn_data.derive_path[i]);
     }
+    PRINTF("\n");
+
     // get staker public key
     // use path from psbt
     uint8_t pubkey[32];
-    if (!bbn_derive_pubkey(g_bbn_data.derive_path,
-                           g_bbn_data.derive_path_len,
-                           BIP32_PUBKEY_VERSION,
-                           pubkey)) {
+    if (!bbn_derive_pubkey(g_bbn_data.derive_path, g_bbn_data.derive_path_len, pubkey)) {
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
@@ -182,18 +181,14 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     PRINTF("g_bbn_data.staker_pk: ");
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
 
-    if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
-        return false;
-    }
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
-    if(g_bbn_data.action_type == BBN_POLICY_BIP322) {
+    if (g_bbn_data.action_type == BBN_POLICY_BIP322) {
         if (!ui_confirm_bbn_message(dc)) {
             PRINTF("ui_confirm_bbn_message failed\n");
             SEND_SW(dc, SW_DENY);
             return false;
         }
-    }
-    else {
+    } else {
         if (!display_actions(dc, g_bbn_data.action_type)) {
             PRINTF("display_actions failed\n");
             SEND_SW(dc, SW_DENY);
@@ -240,7 +235,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         case BBN_POLICY_SLASHING:
         case BBN_POLICY_SLASHING_UNBONDING:
             PRINTF("bbn_check_slashing_address\n");
-            if (!bbn_check_slashing_address(st, g_bbn_data.staker_pk)) {
+            if (!bbn_check_slashing_address(st)) {
                 PRINTF("bbn_check_slashing_address failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
@@ -264,7 +259,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             break;
         case BBN_POLICY_BIP322:
             PRINTF("BBN_POLICY_BIP322 psbt_get_txid_signmessage\n");
-            if(!psbt_get_txid_signmessage(dc, st, psbt_txid)) {
+            if (!psbt_get_txid_signmessage(dc, st, psbt_txid)) {
                 PRINTF("psbt_get_txid_signmessage failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
@@ -283,7 +278,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         default:
             return false;
     }
-
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",
@@ -358,31 +352,58 @@ bool sign_custom_inputs(
                 default:
                     break;
             }
-            if (!compute_sighash_segwitv1(dc,
-                                          st,
-                                          tx_hashes,
-                                          &input_map,  // 当前输入的map
-                                          i,           // 当前输入的索引
-                                          g_bbn_data.g_input_scriptPubKey,
-                                          sizeof(g_bbn_data.g_input_scriptPubKey),
-                                          pLeaf,
-                                          SIGHASH_DEFAULT,
-                                          sighash)) {
-                PRINTF("Failed to compute sighash for input %d\n", i);
-                return false;
-            }
-            if (!sign_sighash_schnorr_and_yield(dc,
-                                                st,
-                                                i,
-                                                g_bbn_data.derive_path,
-                                                g_bbn_data.derive_path_len,
-                                                NULL,
-                                                0,
-                                                leafhash,
-                                                SIGHASH_DEFAULT,
-                                                sighash)) {
-                PRINTF("Failed to sign input %d\n", i);
-                return false;
+            int segwit_version = get_policy_segwit_version(st->wallet_policy_map);
+            if (segwit_version == 0)  // native segwit
+            {
+                // segwitv0 inputs default to SIGHASH_ALL
+                if (!compute_sighash_segwitv0(dc,
+                                              st,
+                                              tx_hashes,
+                                              &input_map,
+                                              i,
+                                              g_bbn_data.g_input_scriptPubKey,
+                                              sizeof(g_bbn_data.g_input_scriptPubKey),
+                                              SIGHASH_DEFAULT,
+                                              sighash))
+                    return false;
+
+                if (!sign_sighash_ecdsa_and_yield(dc,
+                                                  st,
+                                                  i,
+                                                  g_bbn_data.derive_path,
+                                                  g_bbn_data.derive_path_len,
+                                                  SIGHASH_DEFAULT,
+                                                  sighash))
+                    return false;
+            } else if (segwit_version == 1) {  // taproot
+                if (!compute_sighash_segwitv1(dc,
+                                              st,
+                                              tx_hashes,
+                                              &input_map,  // 当前输入的map
+                                              i,           // 当前输入的索引
+                                              g_bbn_data.g_input_scriptPubKey,
+                                              sizeof(g_bbn_data.g_input_scriptPubKey),
+                                              pLeaf,
+                                              SIGHASH_DEFAULT,
+                                              sighash)) {
+                    PRINTF("Failed to compute sighash for input %d\n", i);
+                    return false;
+                }
+                if (!sign_sighash_schnorr_and_yield(dc,
+                                                    st,
+                                                    i,
+                                                    g_bbn_data.derive_path,
+                                                    g_bbn_data.derive_path_len,
+                                                    NULL,
+                                                    0,
+                                                    leafhash,
+                                                    SIGHASH_DEFAULT,
+                                                    sighash)) {
+                    PRINTF("Failed to sign input %d\n", i);
+                    return false;
+                }
+            } else {
+                // should never happen in babtlon
             }
 
             PRINTF("Signed external input %d\n", i);

@@ -226,6 +226,20 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
                 } else {
                     PRINTF("  -> Invalid Message Key length\n");
                 }
+                break;
+            case TAG_BIP32_PATH:
+                if (length <= sizeof(g_bbn_data.derive_path) && length % 4 == 0) {
+                    PRINTF("  -> BIP32 Path (%d bytes): ", length);
+                    for (uint32_t i = 0; i < length / 4; i++) {
+                        g_bbn_data.derive_path[i] = read_u32_be(value, i * 4);
+                        PRINTF("%d ", g_bbn_data.derive_path[i]);
+                    }
+                    g_bbn_data.derive_path_len = length / 4;
+                    PRINTF("\n");
+                } else {
+                    PRINTF("  -> Invalid BIP32 Path length\n");
+                }
+                break;
             default:
                 PRINTF("  -> Unknown TAG: 0x%02x\n", tag);
                 break;

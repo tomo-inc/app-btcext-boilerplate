@@ -50,7 +50,7 @@ bool bbn_check_staking_address(sign_psbt_state_t *st) {
     return true;
 }
 
-bool bbn_check_slashing_address(sign_psbt_state_t *st, uint8_t *staker_pk) {
+bool bbn_check_slashing_address(sign_psbt_state_t *st) {
     uint8_t tweaked_pubkey[34];
     uint8_t merkle_root[32];
 
@@ -179,9 +179,6 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
 }
 
 bool bbn_check_message(uint8_t *psbt_txid) {
-    uint8_t message[64] = {0};
-    size_t message_len = 0;
-    char message_str[128] = {0};
     uint8_t txid[32];
 
     if (!g_bbn_data.has_message || !g_bbn_data.has_message_key) {
@@ -194,7 +191,7 @@ bool bbn_check_message(uint8_t *psbt_txid) {
                                    g_bbn_data.message_key,
                                    txid);
     PRINTF("txid\n");
-    PRINTF_BUF(txid, 32);                               
+    PRINTF_BUF(txid, 32);
     if (memcmp(txid, psbt_txid, 32) != 0) {
         PRINTF("txid\n");
         PRINTF_BUF(txid, 32);
@@ -203,20 +200,5 @@ bool bbn_check_message(uint8_t *psbt_txid) {
         PRINTF("bbn_check_message txid mismatch\n");
         return false;
     }
-
-
-    // bbn_convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
-    // bech32_encode(message_str,
-    //               (const char *) "bbn",
-    //               message,
-    //               message_len,
-    //               BECH32_ENCODING_BECH32);  // bech32 encode the message
-
-    // if (!ui_confirm_bbn_message(dc, message_str, "message")) {
-    //     PRINTF("message_str %s\n", message_str);
-    //     // PRINTF_BUF(message_str, 64);
-    //     SEND_SW(dc, SW_DENY);
-    //     return false;
-    // }
     return true;
 }

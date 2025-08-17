@@ -237,7 +237,7 @@ void compute_bip322_txid_by_message(const uint8_t *message,
     uint8_t converted_5bit[32 * 2] = {0};
     size_t datalen = 0;
     char converted_message[32 * 4] = {0};
-    PRINTF("compute_bip322_txid_by_message %d\n",message_len);
+    PRINTF("compute_bip322_txid_by_message %d\n", message_len);
     PRINTF("message: ");
     PRINTF_BUF(message, message_len);
     PRINTF("tappub: ");
