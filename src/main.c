@@ -41,6 +41,20 @@ bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, 
     memcpy(txid, ith_prevout_hash, 32);  // to save memory
     return true;
 }
+bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
+                             const merkleized_map_commitment_t *input_map,
+                             uint8_t *leaf_script,
+                             size_t leaf_script_len) {
+    uint8_t buf[256];
+    int len = call_get_merkleized_map_value(dc, input_map, (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT}, 1, buf, sizeof(buf));
+    if (len < 0 || len > leaf_script_len) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+    memcpy(leaf_script, buf, len);
+    return true;
+}
+
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
     uint8_t data_merkle_root[32];
