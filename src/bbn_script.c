@@ -237,6 +237,11 @@ void compute_bip322_txid_by_message(const uint8_t *message,
     uint8_t converted_5bit[32 * 2] = {0};
     size_t datalen = 0;
     char converted_message[32 * 4] = {0};
+    PRINTF("compute_bip322_txid_by_message %d\n",message_len);
+    PRINTF("message: ");
+    PRINTF_BUF(message, message_len);
+    PRINTF("tappub: ");
+    PRINTF_BUF(tappub, 32);
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
 

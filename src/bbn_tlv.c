@@ -217,6 +217,15 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
                     PRINTF("  -> Invalid Burning Address length\n");
                 }
                 break;
+            case TAG_MESSAGE_KEY:
+                if (length == 32) {
+                    PRINTF("  -> Message Key: ");
+                    PRINTF_BUF(value, 32);
+                    memcpy(g_bbn_data.message_key, value, 32);
+                    g_bbn_data.has_message_key = true;
+                } else {
+                    PRINTF("  -> Invalid Message Key length\n");
+                }
             default:
                 PRINTF("  -> Unknown TAG: 0x%02x\n", tag);
                 break;

@@ -293,8 +293,10 @@ bool __attribute__((noinline)) display_external_outputs(
                                 out_scriptPubKey,
                                 out_scriptPubKey_len,
                                 out_amount)) {
+                PRINTF("display_output failed\n");
                 return false;
             }
+            PRINTF("display_output ok\n");
         }
     }
 
@@ -307,7 +309,9 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
                                   uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
                                   size_t *out_scriptPubKey_len,
                                   uint64_t *out_amount) {
-    if (out_scriptPubKey == NULL || out_amount == NULL) {
+    //if (out_scriptPubKey == NULL || out_amount == NULL) {
+    if (out_scriptPubKey == NULL) {
+        PRINTF("get_output_script_and_amount: out_scriptPubKey or out_amount is NULL\n");
         SEND_SW(dc, SW_BAD_STATE);
         return false;
     }
@@ -366,6 +370,7 @@ bool __attribute__((noinline)) display_output(
     const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
     size_t out_scriptPubKey_len,
     uint64_t out_amount) {
+    PRINTF("display output enter\n");    
     (void) cur_output_index;
 
     // show this output's address
@@ -378,9 +383,10 @@ bool __attribute__((noinline)) display_output(
     // if (st->bbn_action_type == BBN_POLICY_BIP322) {
     //     if (!is_opreturn(out_scriptPubKey, out_scriptPubKey_len) || out_amount != 0) {
     //         SEND_SW(dc, SW_NOT_SUPPORTED);
-    //         return false;
+    //         return false;åååå
     //     }
     // }
+    PRINTF("display_output: cur_output_index=, external_outputs_count=\n");
 
     if (!format_script(out_scriptPubKey, out_scriptPubKey_len, output_description)) {
         PRINTF("Invalid or unsupported script for output %d\n", cur_output_index);

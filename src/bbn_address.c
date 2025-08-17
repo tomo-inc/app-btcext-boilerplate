@@ -178,33 +178,39 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
     return true;
 }
 
-bool bbn_check_message(void) {
+bool bbn_check_message(uint8_t *psbt_txid) {
     uint8_t message[64] = {0};
     size_t message_len = 0;
     char message_str[128] = {0};
+    uint8_t txid[32];
 
-    if (!g_bbn_data.has_message || !g_bbn_data.has_fp_list || !g_bbn_data.has_staker_pk ||
-        !g_bbn_data.has_txid) {
+    if (!g_bbn_data.has_message || !g_bbn_data.has_message_key) {
         PRINTF("Missing required data for message check\n");
         return false;
     }
 
     compute_bip322_txid_by_message(g_bbn_data.message,
                                    g_bbn_data.message_len,
-                                   g_bbn_data.fp_list[0],
-                                   g_bbn_data.txid);
-    if (memcmp(g_bbn_data.txid, g_bbn_data.staker_pk, 32) != 0) {
+                                   g_bbn_data.message_key,
+                                   txid);
+    PRINTF("txid\n");
+    PRINTF_BUF(txid, 32);                               
+    if (memcmp(txid, psbt_txid, 32) != 0) {
         PRINTF("txid\n");
-        PRINTF("st->psbt_staker_pk\n");
+        PRINTF_BUF(txid, 32);
+        PRINTF("psbt_txid\n");
+        PRINTF_BUF(psbt_txid, 32);
+        PRINTF("bbn_check_message txid mismatch\n");
         return false;
     }
 
-    bbn_convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
-    bech32_encode(message_str,
-                  (const char *) "bbn",
-                  message,
-                  message_len,
-                  BECH32_ENCODING_BECH32);  // bech32 encode the message
+
+    // bbn_convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
+    // bech32_encode(message_str,
+    //               (const char *) "bbn",
+    //               message,
+    //               message_len,
+    //               BECH32_ENCODING_BECH32);  // bech32 encode the message
 
     // if (!ui_confirm_bbn_message(dc, message_str, "message")) {
     //     PRINTF("message_str %s\n", message_str);

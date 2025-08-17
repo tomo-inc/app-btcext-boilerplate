@@ -17,6 +17,7 @@
 #define TAG_SLASHING_FEE_LIMIT  0xfe
 #define TAG_UNBONDING_FEE_LIMIT 0xff
 #define TAG_MESSAGE             0x33
+#define TAG_MESSAGE_KEY         0x34
 #define TAG_TXID                0x35
 #define TAG_BURN_ADDRESS        0x36
 
@@ -73,6 +74,10 @@ typedef struct {
     bool has_message;
     uint8_t message[128];
     uint32_t message_len;
+
+    bool has_message_key;
+    uint8_t message_key[32];
+    uint32_t message_key_len;
 
     bool has_txid;
     uint8_t txid[32];

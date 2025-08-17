@@ -18,6 +18,29 @@
 #include "bbn_address.h"
 #include "display.h"
 
+bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, uint8_t *txid) {
+    merkleized_map_commitment_t ith_map;
+    int res = call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, 0, &ith_map);
+    if (res < 0) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+
+    // get prevout hash and output index for the i-th input
+    uint8_t ith_prevout_hash[32];
+    if (32 != call_get_merkleized_map_value(dc,
+                                            &ith_map,
+                                            (uint8_t[]) {PSBT_IN_PREVIOUS_TXID},
+                                            1,
+                                            ith_prevout_hash,
+                                            32)) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+
+    memcpy(txid, ith_prevout_hash, 32);  // to save memory
+    return true;
+}
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
     uint8_t data_merkle_root[32];
@@ -138,12 +161,12 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
-    PRINTF("g_bbn_data.staker_pk: ");
-    PRINTF_BUF(g_bbn_data.staker_pk, 32);
     // TODO:
     // need to compare the staker pk in taproot script if have
     memcpy(g_bbn_data.staker_pk, pubkey, 32);
     g_bbn_data.has_staker_pk = true;
+    PRINTF("g_bbn_data.staker_pk: ");
+    PRINTF_BUF(g_bbn_data.staker_pk, 32);
 
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
         return false;
@@ -180,12 +203,13 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         PRINTF("display_external_outputs fail \n");
         return false;
     }
+    PRINTF("display_external_outputs ok\n");
     if (st->warnings.high_fee && !ui_warn_high_fee(dc)) {
         PRINTF("ui_warn_high_fee fail \n");
         SEND_SW(dc, SW_DENY);
         return false;
     }
-
+    uint8_t psbt_txid[32];
     switch (g_bbn_data.action_type) {
         case BBN_POLICY_SLASHING:
         case BBN_POLICY_SLASHING_UNBONDING:
@@ -208,6 +232,21 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             PRINTF("bbn_check_unbond_address\n");
             if (!bbn_check_unbond_address(st)) {
                 PRINTF("bbn_check_unbond_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
+        case BBN_POLICY_BIP322:
+            PRINTF("BBN_POLICY_BIP322 psbt_get_txid_signmessage\n");
+            if(!psbt_get_txid_signmessage(dc, st, psbt_txid)) {
+                PRINTF("psbt_get_txid_signmessage failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            PRINTF("psbt_txid: ");
+            PRINTF_BUF(psbt_txid, 32);
+            if (!bbn_check_message(psbt_txid)) {
+                PRINTF("bbn_check_message_key failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
