@@ -46,3 +46,5 @@ bool __attribute__((noinline)) display_output(
     uint64_t out_amount);
 
 bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock);
+
+bool ui_confirm_bbn_message(dispatcher_context_t *dc);

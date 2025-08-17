@@ -171,9 +171,21 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
         return false;
     }
-
-    display_actions(dc, g_bbn_data.action_type);
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
+    if(g_bbn_data.action_type == BBN_POLICY_BIP322) {
+        if (!ui_confirm_bbn_message(dc)) {
+            PRINTF("ui_confirm_bbn_message failed\n");
+            SEND_SW(dc, SW_DENY);
+            return false;
+        }
+    }
+    else {
+        if (!display_actions(dc, g_bbn_data.action_type)) {
+            PRINTF("display_actions failed\n");
+            SEND_SW(dc, SW_DENY);
+            return false;
+        }
+    }
 
     if (g_bbn_data.has_fp_list) {
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
@@ -252,10 +264,12 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             break;
         case BBN_POLICY_WITHDRAW:
+            PRINTF("BBN_POLICY_WITHDRAW psbt_get_txid_signmessage\n");
             break;
         default:
             return false;
     }
+
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",

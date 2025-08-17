@@ -2,12 +2,14 @@
 #include "../bitcoin_app_base/src/ui/menu.h"
 #include "../bitcoin_app_base/src/common/psbt.h"
 #include "../bitcoin_app_base/src/common/bitvector.h"
+#include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map_value.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "io.h"
 #include "nbgl_use_case.h"
 #include "bbn_def.h"
+#include "bbn_data.h"
 #include "display.h"
 
 #define MAX_N_PAIRS 4
@@ -434,6 +436,74 @@ bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
                             status_operation_callback);
 
     // blocking call until the user approves or rejects the transaction
+    bool result = io_ui_process(dc);
+    if (!result) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+
+    return true;
+}
+
+int convert_bits(uint8_t* out, size_t* outlen, int outbits, const uint8_t* in, size_t inlen, int inbits, int pad) {
+    uint32_t val = 0;
+    int bits = 0;
+    uint32_t maxv = (((uint32_t)1) << outbits) - 1;
+    while (inlen--) {
+        val = (val << inbits) | *(in++);
+        bits += inbits;
+        while (bits >= outbits) {
+            bits -= outbits;
+            out[(*outlen)++] = (val >> bits) & maxv;
+        }
+    }
+    if (pad) {
+        if (bits) {
+            out[(*outlen)++] = (val << (outbits - bits)) & maxv;
+        }
+    } else if (((val << (outbits - bits)) & maxv) || bits >= inbits) {
+        return 0;
+    }
+    return 1;
+}
+
+bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
+    nbgl_layoutTagValue_t pairs[16];
+    nbgl_layoutTagValueList_t pairList;
+    uint8_t message[64] = {0};
+    size_t message_len = 0;
+    char message_str[128] = {0};
+
+    convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
+    bech32_encode(message_str,
+                  (const char *) "bbn",
+                  message,
+                  message_len,
+                  BECH32_ENCODING_BECH32);  // bech32 encode the message
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+    const char *name = "message"; 
+    uint8_t s_name[64];
+    uint8_t s_value[128]; 
+
+    snprintf((char *) s_value, sizeof(s_value), "%s", message_str);
+    snprintf((char *) s_name, sizeof(s_name), "%s", name);   
+    // Setup data to display
+    pairs[0].item = (const char *) s_name;
+    pairs[0].value = (const char *) s_value;
+
+    // Setup list
+    pairList.nbMaxLinesForValue = 0;
+    pairList.nbPairs = 1;
+    pairList.pairs = pairs;
+
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Sign message action",
+                            NULL,
+                            "Confirm sign message action",
+                            status_operation_callback);
     bool result = io_ui_process(dc);
     if (!result) {
         SEND_SW(dc, SW_DENY);
