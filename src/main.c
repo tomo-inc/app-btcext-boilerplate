@@ -57,6 +57,7 @@ bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
         return false;
     }
     memcpy(leaf_script, buf, len);
+
     return true;
 }
 
@@ -355,27 +356,52 @@ bool sign_custom_inputs(
             int segwit_version = get_policy_segwit_version(st->wallet_policy_map);
             if (segwit_version == 0)  // native segwit
             {
+                PRINTF("native segwit %d\n",segwit_version);
+                uint8_t witness_utxo_buf[8 + 1 + 34]; // 8字节金额 + 1字节脚本长度 + 最多34字节脚本
+                int witness_utxo_len = call_get_merkleized_map_value(
+                    dc,
+                    &input_map,
+                    (uint8_t[]){PSBT_IN_WITNESS_UTXO},
+                    1,
+                    witness_utxo_buf,
+                    sizeof(witness_utxo_buf)
+                );
+
+                if (witness_utxo_len < 10) {
+                    PRINTF("Failed to get witness_utxo\n");
+                    return false;
+                }
+
+                // 解析 scriptPubKey
+                uint8_t script_len = witness_utxo_buf[8]; // 第9字节是脚本长度
+                uint8_t *script_pubkey = witness_utxo_buf + 9; // 紧跟在长度后面
+                PRINTF("scriptPubKey len: %d\n", script_len);
+                PRINTF_BUF(script_pubkey, script_len);
+
                 // segwitv0 inputs default to SIGHASH_ALL
                 if (!compute_sighash_segwitv0(dc,
                                               st,
                                               tx_hashes,
                                               &input_map,
                                               i,
-                                              g_bbn_data.g_input_scriptPubKey,
-                                              sizeof(g_bbn_data.g_input_scriptPubKey),
-                                              SIGHASH_DEFAULT,
+                                              script_pubkey,
+                                              script_len,
+                                              SIGHASH_ALL,
                                               sighash))
                     return false;
-
+                PRINTF("sighash: ");
+                PRINTF_BUF(sighash, 32);
+                
                 if (!sign_sighash_ecdsa_and_yield(dc,
                                                   st,
                                                   i,
                                                   g_bbn_data.derive_path,
                                                   g_bbn_data.derive_path_len,
-                                                  SIGHASH_DEFAULT,
+                                                  SIGHASH_ALL,
                                                   sighash))
                     return false;
             } else if (segwit_version == 1) {  // taproot
+                PRINTF("taproot %d\n",segwit_version);
                 if (!compute_sighash_segwitv1(dc,
                                               st,
                                               tx_hashes,
@@ -389,6 +415,8 @@ bool sign_custom_inputs(
                     PRINTF("Failed to compute sighash for input %d\n", i);
                     return false;
                 }
+                PRINTF("sighash: ");
+                PRINTF_BUF(sighash, 32);
                 if (!sign_sighash_schnorr_and_yield(dc,
                                                     st,
                                                     i,
