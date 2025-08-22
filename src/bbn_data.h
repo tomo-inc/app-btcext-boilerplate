@@ -17,8 +17,10 @@
 #define TAG_SLASHING_FEE_LIMIT  0xfe
 #define TAG_UNBONDING_FEE_LIMIT 0xff
 #define TAG_MESSAGE             0x33
+#define TAG_MESSAGE_KEY         0x34
 #define TAG_TXID                0x35
 #define TAG_BURN_ADDRESS        0x36
+#define TAG_BIP32_PATH          0x37
 
 // Action Type定义
 #define ACTION_STAKING            1
@@ -74,13 +76,14 @@ typedef struct {
     uint8_t message[128];
     uint32_t message_len;
 
+    bool has_message_key;
+    uint8_t message_key[32];
+    uint32_t message_key_len;
+
     bool has_txid;
     uint8_t txid[32];
 
     uint8_t g_input_scriptPubKey[32];
-    // uint8_t g_tap_leaf_hash[32];
-    // merkleized_map_commitment_t g_input_map;
-    // uint32_t g_input_index;
 
     merkleized_map_commitment_t output_map;
     uint32_t derive_path[5];
