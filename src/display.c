@@ -87,7 +87,6 @@ bool display_public_keys(dispatcher_context_t *dc,
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = n_pairs;
     pairList.pairs = pairs;
-    PRINTF("Reviewing public keys: %d\n", n_pairs);
     if (pub_type == BBN_DIS_PUB_COV) {
         nbgl_useCaseReviewLight(TYPE_OPERATION,
                                 &pairList,
@@ -264,7 +263,8 @@ bool __attribute__((noinline)) display_external_outputs(
             // external output, user needs to validate
             uint8_t out_scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
             size_t out_scriptPubKey_len;
-            uint64_t out_amount;
+            // TODO: to check why there is path not init the out amount
+            uint64_t out_amount = 0;
 
             if (external_outputs_count < N_CACHED_EXTERNAL_OUTPUTS) {
                 // we have the output cached, no need to fetch it again
@@ -273,20 +273,18 @@ bool __attribute__((noinline)) display_external_outputs(
                        st->outputs.output_scripts[external_outputs_count],
                        out_scriptPubKey_len);
                 out_amount = st->outputs.output_amounts[external_outputs_count];
-            } else if (!get_output_script_and_amount(dc,
-                                                     st,
-                                                     cur_output_index,
-                                                     out_scriptPubKey,
-                                                     &out_scriptPubKey_len)) {
-                SEND_SW(dc, SW_INCORRECT_DATA);
-                return false;
+            } else {
+                if (!get_output_script_and_amount(dc,
+                                                  st,
+                                                  cur_output_index,
+                                                  out_scriptPubKey,
+                                                  &out_scriptPubKey_len)) {
+                    SEND_SW(dc, SW_INCORRECT_DATA);
+                    return false;
+                }
             }
 
             ++external_outputs_count;
-            PRINTF("out_scriptPubKey (len=%d): ", (int) out_scriptPubKey_len);
-            PRINTF_BUF(out_scriptPubKey, out_scriptPubKey_len);
-            PRINTF("Output amount: %d satoshi\n", (uint32_t) out_amount);
-            // displays the output. It fails if the output is invalid or not supported
             if (!display_output(dc,
                                 st,
                                 cur_output_index,
@@ -341,8 +339,6 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
         SEND_SW(dc, SW_INCORRECT_DATA);
         return false;
     }
-    // uint64_t value = read_u64_le(raw_result, 0);
-    // *out_amount = value;
 
     // Read the output's scriptPubKey
     result_len = call_get_merkleized_map_value(dc,
@@ -375,18 +371,6 @@ bool __attribute__((noinline)) display_output(
 
     // show this output's address
     char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
-
-    // chester
-    // if it is the sign message in BIP322
-    // to avoid it is mis-used(attacked) for normal transaction
-    // we check amount=0, address=OP_RETURN
-    // if (st->bbn_action_type == BBN_POLICY_BIP322) {
-    //     if (!is_opreturn(out_scriptPubKey, out_scriptPubKey_len) || out_amount != 0) {
-    //         SEND_SW(dc, SW_NOT_SUPPORTED);
-    //         return false;åååå
-    //     }
-    // }
-    PRINTF("display_output: cur_output_index=, external_outputs_count=\n");
 
     if (!format_script(out_scriptPubKey, out_scriptPubKey_len, output_description)) {
         PRINTF("Invalid or unsupported script for output %d\n", cur_output_index);

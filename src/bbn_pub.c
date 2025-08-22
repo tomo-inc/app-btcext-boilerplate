@@ -17,7 +17,5 @@ bool bbn_derive_pubkey(uint32_t *bip32_path, uint8_t bip32_path_len, uint8_t *ou
     }
     uint8_t *expected_key = xpub.compressed_pubkey + 1;
     memcpy(out_pubkey, expected_key, 32);
-    PRINTF("bbn_derive_pubkey out_pubkey: ");
-    PRINTF_BUF(out_pubkey, 32);
     return true;
 }

@@ -64,27 +64,16 @@ bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
     uint8_t data_merkle_root[32];
-    PRINTF("Custom APDU handler called with CLA: 0x%02x, INS: 0x%02x\n", cmd->cla, cmd->ins);
-
     if (cmd->cla != CLA_APP) {
         return false;
     }
 
     if (cmd->ins == INS_CUSTOM_TLV) {
-        PRINTF("Handling custom APDU INS_CUSTOM_TLV\n");
-        PRINTF("&dc->read_buffer %x\n", &dc->read_buffer);
-        PRINTF_BUF(&dc->read_buffer, dc->read_buffer.size);
-
         if (!buffer_read_varint(&dc->read_buffer, &data_length) ||
             !buffer_read_bytes(&dc->read_buffer, data_merkle_root, 32)) {
             SEND_SW(dc, SW_WRONG_DATA_LENGTH);
             return false;
         }
-
-        PRINTF("Data length: %d\n", (int) data_length);
-        PRINTF("Merkle root: ");
-        PRINTF_BUF(data_merkle_root, 32);
-
         size_t n_chunks = (data_length + CHUNK_SIZE - 1) / CHUNK_SIZE;
 
         uint8_t complete_data[1024];
@@ -94,7 +83,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             uint8_t chunk[CHUNK_SIZE];
             int chunk_len =
                 call_get_merkle_leaf_element(dc, data_merkle_root, n_chunks, i, chunk, CHUNK_SIZE);
-            PRINTF("chunk_len:%d %d\n", i, chunk_len);
 
             if (chunk_len < 0 || (chunk_len != CHUNK_SIZE && i != n_chunks - 1)) {
                 SEND_SW(dc, SW_INCORRECT_DATA);
@@ -108,9 +96,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             received_data += copy_len;
         }
 
-        PRINTF("All %d bytes received, parsing TLV data...\n", (int) received_data);
-        PRINTF_BUF(complete_data, received_data);
-
         if (!parse_tlv_data(complete_data, received_data)) {
             SEND_SW(dc, SW_INCORRECT_DATA);
             return false;
@@ -122,9 +107,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
 
         uint8_t final_hash[32];
         crypto_hash_digest(&hash_ctx.header, final_hash, 32);
-        PRINTF("final_hash: ");
-        PRINTF_BUF(final_hash, 32);
-
         dc->add_to_response(final_hash, 32);
         SEND_SW(dc, SW_OK);
         return true;
@@ -160,7 +142,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
     UNUSED(internal_inputs);
-    PRINTF("Validating and displaying transaction\n");
+
     PRINTF("g_bbn_data.derive_path_len: %d\n", g_bbn_data.derive_path_len);
     PRINTF("g_bbn_data.derive_path: ");
     for (size_t i = 0; i < g_bbn_data.derive_path_len; i++) {
@@ -235,7 +217,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     switch (g_bbn_data.action_type) {
         case BBN_POLICY_SLASHING:
         case BBN_POLICY_SLASHING_UNBONDING:
-            PRINTF("bbn_check_slashing_address\n");
             if (!bbn_check_slashing_address(st)) {
                 PRINTF("bbn_check_slashing_address failed\n");
                 SEND_SW(dc, SW_DENY);
@@ -243,7 +224,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             break;
         case BBN_POLICY_STAKE_TRANSFER:
-            PRINTF("bbn_check_staking_address\n");
             if (!bbn_check_staking_address(st)) {
                 PRINTF("bbn_check_staking_address failed\n");
                 SEND_SW(dc, SW_DENY);
@@ -251,7 +231,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             break;
         case BBN_POLICY_UNBOND:
-            PRINTF("bbn_check_unbond_address\n");
             if (!bbn_check_unbond_address(st)) {
                 PRINTF("bbn_check_unbond_address failed\n");
                 SEND_SW(dc, SW_DENY);
@@ -259,14 +238,11 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             break;
         case BBN_POLICY_BIP322:
-            PRINTF("BBN_POLICY_BIP322 psbt_get_txid_signmessage\n");
             if (!psbt_get_txid_signmessage(dc, st, psbt_txid)) {
                 PRINTF("psbt_get_txid_signmessage failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
-            PRINTF("psbt_txid: ");
-            PRINTF_BUF(psbt_txid, 32);
             if (!bbn_check_message(psbt_txid)) {
                 PRINTF("bbn_check_message_key failed\n");
                 SEND_SW(dc, SW_DENY);
@@ -274,17 +250,12 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             break;
         case BBN_POLICY_WITHDRAW:
-            PRINTF("BBN_POLICY_WITHDRAW psbt_get_txid_signmessage\n");
             break;
         default:
             return false;
     }
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",
-           (uint32_t) st->inputs_total_amount,
-           (uint32_t) st->outputs.total_amount);
-    PRINTF("Fee: %d\n", (uint32_t) fee);
     if (!ui_validate_transaction(dc, COIN_COINID_SHORT, fee, false)) {
         PRINTF("ui_validate_transaction fail \n");
         SEND_SW(dc, SW_DENY);
@@ -314,8 +285,6 @@ bool sign_custom_inputs(
     sign_psbt_state_t *st,
     tx_hashes_t *tx_hashes,
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
-    PRINTF("Signing custom inputs\n");
-    PRINTF("st->n_inputs: %d\n", st->n_inputs);
     // 遍历所有输入，找到外部输入并签名
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
@@ -334,21 +303,17 @@ bool sign_custom_inputs(
                 case BBN_POLICY_SLASHING_UNBONDING:
                     compute_bbn_leafhash_slashing(leafhash);
                     pLeaf = leafhash;
-                    PRINTF("leafhash BBN_POLICY_SLASHING BBN_POLICY_SLASHING_UNBONDING\n");
                     break;
                 case BBN_POLICY_STAKE_TRANSFER:
                     pLeaf = NULL;
-                    PRINTF("leafhash BBN_POLICY_STAKE_TRANSFER\n");
                     break;
                 case BBN_POLICY_UNBOND:
                     compute_bbn_leafhash_unbonding(leafhash);
                     pLeaf = leafhash;
-                    PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
                 case BBN_POLICY_WITHDRAW:
                     compute_bbn_leafhash_timelock(leafhash);
                     pLeaf = leafhash;
-                    PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
                 default:
                     break;
@@ -356,16 +321,15 @@ bool sign_custom_inputs(
             int segwit_version = get_policy_segwit_version(st->wallet_policy_map);
             if (segwit_version == 0)  // native segwit
             {
-                PRINTF("native segwit %d\n",segwit_version);
-                uint8_t witness_utxo_buf[8 + 1 + 34]; // 8字节金额 + 1字节脚本长度 + 最多34字节脚本
-                int witness_utxo_len = call_get_merkleized_map_value(
-                    dc,
-                    &input_map,
-                    (uint8_t[]){PSBT_IN_WITNESS_UTXO},
-                    1,
-                    witness_utxo_buf,
-                    sizeof(witness_utxo_buf)
-                );
+                PRINTF("native segwit %d\n", segwit_version);
+                uint8_t witness_utxo_buf[8 + 1 + 34];  // 8字节金额 + 1字节脚本长度 + 最多34字节脚本
+                int witness_utxo_len =
+                    call_get_merkleized_map_value(dc,
+                                                  &input_map,
+                                                  (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
+                                                  1,
+                                                  witness_utxo_buf,
+                                                  sizeof(witness_utxo_buf));
 
                 if (witness_utxo_len < 10) {
                     PRINTF("Failed to get witness_utxo\n");
@@ -373,8 +337,8 @@ bool sign_custom_inputs(
                 }
 
                 // 解析 scriptPubKey
-                uint8_t script_len = witness_utxo_buf[8]; // 第9字节是脚本长度
-                uint8_t *script_pubkey = witness_utxo_buf + 9; // 紧跟在长度后面
+                uint8_t script_len = witness_utxo_buf[8];       // 第9字节是脚本长度
+                uint8_t *script_pubkey = witness_utxo_buf + 9;  // 紧跟在长度后面
                 PRINTF("scriptPubKey len: %d\n", script_len);
                 PRINTF_BUF(script_pubkey, script_len);
 
@@ -391,7 +355,7 @@ bool sign_custom_inputs(
                     return false;
                 PRINTF("sighash: ");
                 PRINTF_BUF(sighash, 32);
-                
+
                 if (!sign_sighash_ecdsa_and_yield(dc,
                                                   st,
                                                   i,
@@ -401,7 +365,6 @@ bool sign_custom_inputs(
                                                   sighash))
                     return false;
             } else if (segwit_version == 1) {  // taproot
-                PRINTF("taproot %d\n",segwit_version);
                 if (!compute_sighash_segwitv1(dc,
                                               st,
                                               tx_hashes,
@@ -433,10 +396,9 @@ bool sign_custom_inputs(
             } else {
                 // should never happen in babtlon
             }
-
-            PRINTF("Signed external input %d\n", i);
         }
     }
 
+    PRINTF("Signed external input\n");
     return true;
 }

@@ -180,9 +180,6 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
-    PRINTF("compute_bbn_leafhash_timelock staker_pk:\n");
-    PRINTF_BUF(g_bbn_data.staker_pk, 32);
-
     tapscript[offset++] = 0x20;
     if (g_bbn_data.has_staker_pk)
         memcpy(tapscript + offset, g_bbn_data.staker_pk, 32);
@@ -205,9 +202,6 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         PRINTF("No timelock found\n");
         return false;
     }
-    PRINTF("timelock: %d\n", (uint32_t) g_bbn_data.timelock);
-    PRINTF("tap length: %d\n", offset);
-    PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
 }
@@ -237,11 +231,6 @@ void compute_bip322_txid_by_message(const uint8_t *message,
     uint8_t converted_5bit[32 * 2] = {0};
     size_t datalen = 0;
     char converted_message[32 * 4] = {0};
-    PRINTF("compute_bip322_txid_by_message %d\n", message_len);
-    PRINTF("message: ");
-    PRINTF_BUF(message, message_len);
-    PRINTF("tappub: ");
-    PRINTF_BUF(tappub, 32);
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
 
