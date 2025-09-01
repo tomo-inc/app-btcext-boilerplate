@@ -99,11 +99,27 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
         for (int i = 0; i < g_bbn_data.fp_count; i++) {
             memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
             offset += 32;
-            tapscript[offset++] = 0xad;  // TODO confirm multi FP is single sig or multi-sig
+
+            if(g_bbn_data.fp_count == 1){
+                tapscript[offset++] = 0xad;
+                break;
+            }
+            if (i == 0)
+                tapscript[offset++] = 0xac;
+            else
+                tapscript[offset++] = 0xba;
         }
     } else {
         return false;
     }
+    if(g_bbn_data.fp_count > 1) {
+        if (g_bbn_data.has_fp_quorum)
+            tapscript[offset++] = 0x50 + g_bbn_data.fp_quorum;
+        else
+            return false;
+        tapscript[offset++] = 0x9d;
+    }
+
     if (g_bbn_data.has_cov_key_list) {
         if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
             return false;
@@ -154,6 +170,10 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
             tapscript[offset++] = 0x20;
             memcpy(tapscript + offset, g_bbn_data.cov_key_list[i], 32);
             offset += 32;
+             if(g_bbn_data.fp_count == 1){
+                tapscript[offset++] = 0xad;
+                break;
+            }
             if (i == 0)
                 tapscript[offset++] = 0xac;
             else
@@ -161,6 +181,13 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
         }
     } else {
         return false;
+    }
+    if(g_bbn_data.fp_count > 1) {
+        if (g_bbn_data.has_fp_quorum)
+            tapscript[offset++] = 0x50 + g_bbn_data.fp_quorum;
+        else
+            return false;
+        tapscript[offset++] = 0x9d;
     }
     if (g_bbn_data.has_cov_quorum)
         tapscript[offset++] = 0x50 + g_bbn_data.cov_quorum;

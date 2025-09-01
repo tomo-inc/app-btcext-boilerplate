@@ -21,6 +21,7 @@
 #define TAG_TXID                0x35
 #define TAG_BURN_ADDRESS        0x36
 #define TAG_BIP32_PATH          0x37
+#define TAG_FP_QUORUM           0x38
 
 // Action Type定义
 #define ACTION_STAKING            1
@@ -57,6 +58,9 @@ typedef struct {
     // Covenant Quorum
     bool has_cov_quorum;
     uint8_t cov_quorum;
+
+    bool has_fp_quorum;
+    uint8_t fp_quorum;
 
     // Timelocks
     bool has_timelock;

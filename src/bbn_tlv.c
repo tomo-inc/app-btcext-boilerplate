@@ -120,6 +120,15 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
                     return false;
                 }
                 break;
+            case TAG_FP_QUORUM:
+                if (length == 1) {
+                    g_bbn_data.has_fp_quorum = true;
+                    g_bbn_data.fp_quorum = value[0];
+                } else {
+                    PRINTF("  -> Invalid FP Quorum length\n");
+                    return false;
+                }
+                break;
             case TAG_TIMELOCK:
                 if (length == 8) {
                     uint64_t timelock = read_u64_be(value, 0);
