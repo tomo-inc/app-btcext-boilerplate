@@ -18,30 +18,62 @@
 #include "bbn_address.h"
 #include "display.h"
 
+bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, uint8_t *txid) {
+    merkleized_map_commitment_t ith_map;
+    int res = call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, 0, &ith_map);
+    if (res < 0) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+
+    // get prevout hash and output index for the i-th input
+    uint8_t ith_prevout_hash[32];
+    if (32 != call_get_merkleized_map_value(dc,
+                                            &ith_map,
+                                            (uint8_t[]) {PSBT_IN_PREVIOUS_TXID},
+                                            1,
+                                            ith_prevout_hash,
+                                            32)) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+
+    memcpy(txid, ith_prevout_hash, 32);  // to save memory
+    return true;
+}
+bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
+                             const merkleized_map_commitment_t *input_map,
+                             uint8_t *leaf_script,
+                             int32_t leaf_script_len) {
+    uint8_t buf[256];
+    int32_t len = call_get_merkleized_map_value(dc,
+                                                input_map,
+                                                (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT},
+                                                1,
+                                                buf,
+                                                sizeof(buf));
+    if (len < 0 || len > leaf_script_len) {
+        SEND_SW(dc, SW_INCORRECT_DATA);
+        return false;
+    }
+    memcpy(leaf_script, buf, len);
+
+    return true;
+}
+
 bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     uint64_t data_length;
     uint8_t data_merkle_root[32];
-    PRINTF("Custom APDU handler called with CLA: 0x%02x, INS: 0x%02x\n", cmd->cla, cmd->ins);
-
     if (cmd->cla != CLA_APP) {
         return false;
     }
 
     if (cmd->ins == INS_CUSTOM_TLV) {
-        PRINTF("Handling custom APDU INS_CUSTOM_TLV\n");
-        PRINTF("&dc->read_buffer %x\n", &dc->read_buffer);
-        PRINTF_BUF(&dc->read_buffer, dc->read_buffer.size);
-
         if (!buffer_read_varint(&dc->read_buffer, &data_length) ||
             !buffer_read_bytes(&dc->read_buffer, data_merkle_root, 32)) {
             SEND_SW(dc, SW_WRONG_DATA_LENGTH);
             return false;
         }
-
-        PRINTF("Data length: %d\n", (int) data_length);
-        PRINTF("Merkle root: ");
-        PRINTF_BUF(data_merkle_root, 32);
-
         size_t n_chunks = (data_length + CHUNK_SIZE - 1) / CHUNK_SIZE;
 
         uint8_t complete_data[1024];
@@ -51,7 +83,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             uint8_t chunk[CHUNK_SIZE];
             int chunk_len =
                 call_get_merkle_leaf_element(dc, data_merkle_root, n_chunks, i, chunk, CHUNK_SIZE);
-            PRINTF("chunk_len:%d %d\n", i, chunk_len);
 
             if (chunk_len < 0 || (chunk_len != CHUNK_SIZE && i != n_chunks - 1)) {
                 SEND_SW(dc, SW_INCORRECT_DATA);
@@ -65,9 +96,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             received_data += copy_len;
         }
 
-        PRINTF("All %d bytes received, parsing TLV data...\n", (int) received_data);
-        PRINTF_BUF(complete_data, received_data);
-
         if (!parse_tlv_data(complete_data, received_data)) {
             SEND_SW(dc, SW_INCORRECT_DATA);
             return false;
@@ -79,23 +107,12 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
 
         uint8_t final_hash[32];
         crypto_hash_digest(&hash_ctx.header, final_hash, 32);
-        PRINTF("final_hash: ");
-        PRINTF_BUF(final_hash, 32);
-
         dc->add_to_response(final_hash, 32);
         SEND_SW(dc, SW_OK);
         return true;
     }
 
     return false;
-}
-
-static bool validate_transaction(dispatcher_context_t *dc,
-                                 sign_psbt_state_t *st,
-                                 const uint8_t internal_inputs[64],
-                                 const uint8_t internal_outputs[64]) {
-    PRINTF("Validating transaction\n");
-    return true;
 }
 
 /**
@@ -124,33 +141,43 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       sign_psbt_state_t *st,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
-    PRINTF("Validating and displaying transaction\n");
-    if (!bbn_get_final_path(g_bbn_data.derive_path, &g_bbn_data.derive_path_len)) {
-        return false;
+    UNUSED(internal_inputs);
+
+    PRINTF("g_bbn_data.derive_path_len: %d\n", g_bbn_data.derive_path_len);
+    PRINTF("g_bbn_data.derive_path: ");
+    for (size_t i = 0; i < g_bbn_data.derive_path_len; i++) {
+        PRINTF("0x%x ", g_bbn_data.derive_path[i]);
     }
+    PRINTF("\n");
+
     // get staker public key
     // use path from psbt
     uint8_t pubkey[32];
-    if (!bbn_derive_pubkey(g_bbn_data.derive_path,
-                           g_bbn_data.derive_path_len,
-                           BIP32_PUBKEY_VERSION,
-                           pubkey)) {
+    if (!bbn_derive_pubkey(g_bbn_data.derive_path, g_bbn_data.derive_path_len, pubkey)) {
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
-    PRINTF("g_bbn_data.staker_pk: ");
-    PRINTF_BUF(g_bbn_data.staker_pk, 32);
     // TODO:
     // need to compare the staker pk in taproot script if have
     memcpy(g_bbn_data.staker_pk, pubkey, 32);
     g_bbn_data.has_staker_pk = true;
+    PRINTF("g_bbn_data.staker_pk: ");
+    PRINTF_BUF(g_bbn_data.staker_pk, 32);
 
-    if (!validate_transaction(dc, st, internal_inputs, internal_outputs)) {
-        return false;
-    }
-
-    display_actions(dc, g_bbn_data.action_type);
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
+    if (g_bbn_data.action_type == BBN_POLICY_BIP322) {
+        if (!ui_confirm_bbn_message(dc)) {
+            PRINTF("ui_confirm_bbn_message failed\n");
+            SEND_SW(dc, SW_DENY);
+            return false;
+        }
+    } else {
+        if (!display_actions(dc, g_bbn_data.action_type)) {
+            PRINTF("display_actions failed\n");
+            SEND_SW(dc, SW_DENY);
+            return false;
+        }
+    }
 
     if (g_bbn_data.has_fp_list) {
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
@@ -180,24 +207,23 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         PRINTF("display_external_outputs fail \n");
         return false;
     }
+    PRINTF("display_external_outputs ok\n");
     if (st->warnings.high_fee && !ui_warn_high_fee(dc)) {
         PRINTF("ui_warn_high_fee fail \n");
         SEND_SW(dc, SW_DENY);
         return false;
     }
-
+    uint8_t psbt_txid[32];
     switch (g_bbn_data.action_type) {
         case BBN_POLICY_SLASHING:
         case BBN_POLICY_SLASHING_UNBONDING:
-            PRINTF("bbn_check_slashing_address\n");
-            if (!bbn_check_slashing_address(st, g_bbn_data.staker_pk)) {
+            if (!bbn_check_slashing_address(st)) {
                 PRINTF("bbn_check_slashing_address failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
             break;
         case BBN_POLICY_STAKE_TRANSFER:
-            PRINTF("bbn_check_staking_address\n");
             if (!bbn_check_staking_address(st)) {
                 PRINTF("bbn_check_staking_address failed\n");
                 SEND_SW(dc, SW_DENY);
@@ -205,9 +231,20 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             break;
         case BBN_POLICY_UNBOND:
-            PRINTF("bbn_check_unbond_address\n");
             if (!bbn_check_unbond_address(st)) {
                 PRINTF("bbn_check_unbond_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
+        case BBN_POLICY_BIP322:
+            if (!psbt_get_txid_signmessage(dc, st, psbt_txid)) {
+                PRINTF("psbt_get_txid_signmessage failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            if (!bbn_check_message(psbt_txid)) {
+                PRINTF("bbn_check_message_key failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
@@ -219,10 +256,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
-    PRINTF("st->inputs_total_amount=%d,st->outputs.total_amount=%d\n",
-           (uint32_t) st->inputs_total_amount,
-           (uint32_t) st->outputs.total_amount);
-    PRINTF("Fee: %d\n", (uint32_t) fee);
     if (!ui_validate_transaction(dc, COIN_COINID_SHORT, fee, false)) {
         PRINTF("ui_validate_transaction fail \n");
         SEND_SW(dc, SW_DENY);
@@ -252,8 +285,6 @@ bool sign_custom_inputs(
     sign_psbt_state_t *st,
     tx_hashes_t *tx_hashes,
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
-    PRINTF("Signing custom inputs\n");
-    PRINTF("st->n_inputs: %d\n", st->n_inputs);
     // 遍历所有输入，找到外部输入并签名
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
@@ -272,55 +303,102 @@ bool sign_custom_inputs(
                 case BBN_POLICY_SLASHING_UNBONDING:
                     compute_bbn_leafhash_slashing(leafhash);
                     pLeaf = leafhash;
-                    PRINTF("leafhash BBN_POLICY_SLASHING BBN_POLICY_SLASHING_UNBONDING\n");
                     break;
                 case BBN_POLICY_STAKE_TRANSFER:
                     pLeaf = NULL;
-                    PRINTF("leafhash BBN_POLICY_STAKE_TRANSFER\n");
                     break;
                 case BBN_POLICY_UNBOND:
                     compute_bbn_leafhash_unbonding(leafhash);
                     pLeaf = leafhash;
-                    PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
                 case BBN_POLICY_WITHDRAW:
                     compute_bbn_leafhash_timelock(leafhash);
                     pLeaf = leafhash;
-                    PRINTF("leafhash BBN_POLICY_UNBOND\n");
                     break;
                 default:
                     break;
             }
-            if (!compute_sighash_segwitv1(dc,
-                                          st,
-                                          tx_hashes,
-                                          &input_map,  // 当前输入的map
-                                          i,           // 当前输入的索引
-                                          g_bbn_data.g_input_scriptPubKey,
-                                          sizeof(g_bbn_data.g_input_scriptPubKey),
-                                          pLeaf,
-                                          SIGHASH_DEFAULT,
-                                          sighash)) {
-                PRINTF("Failed to compute sighash for input %d\n", i);
-                return false;
-            }
-            if (!sign_sighash_schnorr_and_yield(dc,
-                                                st,
-                                                i,
-                                                g_bbn_data.derive_path,
-                                                g_bbn_data.derive_path_len,
-                                                NULL,
-                                                0,
-                                                leafhash,
-                                                SIGHASH_DEFAULT,
-                                                sighash)) {
-                PRINTF("Failed to sign input %d\n", i);
-                return false;
-            }
+            int segwit_version = get_policy_segwit_version(st->wallet_policy_map);
+            if (segwit_version == 0)  // native segwit
+            {
+                PRINTF("native segwit %d\n", segwit_version);
+                uint8_t witness_utxo_buf[8 + 1 + 34];  // 8字节金额 + 1字节脚本长度 + 最多34字节脚本
+                int witness_utxo_len =
+                    call_get_merkleized_map_value(dc,
+                                                  &input_map,
+                                                  (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
+                                                  1,
+                                                  witness_utxo_buf,
+                                                  sizeof(witness_utxo_buf));
 
-            PRINTF("Signed external input %d\n", i);
+                if (witness_utxo_len < 10) {
+                    PRINTF("Failed to get witness_utxo\n");
+                    return false;
+                }
+
+                // 解析 scriptPubKey
+                uint8_t script_len = witness_utxo_buf[8];       // 第9字节是脚本长度
+                uint8_t *script_pubkey = witness_utxo_buf + 9;  // 紧跟在长度后面
+                PRINTF("scriptPubKey len: %d\n", script_len);
+                PRINTF_BUF(script_pubkey, script_len);
+
+                // segwitv0 inputs default to SIGHASH_ALL
+                if (!compute_sighash_segwitv0(dc,
+                                              st,
+                                              tx_hashes,
+                                              &input_map,
+                                              i,
+                                              script_pubkey,
+                                              script_len,
+                                              SIGHASH_ALL,
+                                              sighash))
+                    return false;
+                PRINTF("sighash: ");
+                PRINTF_BUF(sighash, 32);
+
+                if (!sign_sighash_ecdsa_and_yield(dc,
+                                                  st,
+                                                  i,
+                                                  g_bbn_data.derive_path,
+                                                  g_bbn_data.derive_path_len,
+                                                  SIGHASH_ALL,
+                                                  sighash))
+                    return false;
+            } else if (segwit_version == 1) {  // taproot
+                if (!compute_sighash_segwitv1(dc,
+                                              st,
+                                              tx_hashes,
+                                              &input_map,  // 当前输入的map
+                                              i,           // 当前输入的索引
+                                              g_bbn_data.g_input_scriptPubKey,
+                                              sizeof(g_bbn_data.g_input_scriptPubKey),
+                                              pLeaf,
+                                              SIGHASH_DEFAULT,
+                                              sighash)) {
+                    PRINTF("Failed to compute sighash for input %d\n", i);
+                    return false;
+                }
+                PRINTF("sighash: ");
+                PRINTF_BUF(sighash, 32);
+                if (!sign_sighash_schnorr_and_yield(dc,
+                                                    st,
+                                                    i,
+                                                    g_bbn_data.derive_path,
+                                                    g_bbn_data.derive_path_len,
+                                                    NULL,
+                                                    0,
+                                                    leafhash,
+                                                    SIGHASH_DEFAULT,
+                                                    sighash)) {
+                    PRINTF("Failed to sign input %d\n", i);
+                    return false;
+                }
+            } else {
+                // should never happen in babtlon
+            }
         }
     }
 
+    PRINTF("Signed external input\n");
     return true;
 }

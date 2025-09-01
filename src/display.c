@@ -2,12 +2,14 @@
 #include "../bitcoin_app_base/src/ui/menu.h"
 #include "../bitcoin_app_base/src/common/psbt.h"
 #include "../bitcoin_app_base/src/common/bitvector.h"
+#include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map_value.h"
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #include "io.h"
 #include "nbgl_use_case.h"
 #include "bbn_def.h"
+#include "bbn_data.h"
 #include "display.h"
 
 #define MAX_N_PAIRS 4
@@ -85,7 +87,6 @@ bool display_public_keys(dispatcher_context_t *dc,
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = n_pairs;
     pairList.pairs = pairs;
-    PRINTF("Reviewing public keys: %d\n", n_pairs);
     if (pub_type == BBN_DIS_PUB_COV) {
         nbgl_useCaseReviewLight(TYPE_OPERATION,
                                 &pairList,
@@ -262,7 +263,8 @@ bool __attribute__((noinline)) display_external_outputs(
             // external output, user needs to validate
             uint8_t out_scriptPubKey[MAX_OUTPUT_SCRIPTPUBKEY_LEN];
             size_t out_scriptPubKey_len;
-            uint64_t out_amount;
+            // TODO: to check why there is path not init the out amount
+            uint64_t out_amount = 0;
 
             if (external_outputs_count < N_CACHED_EXTERNAL_OUTPUTS) {
                 // we have the output cached, no need to fetch it again
@@ -271,21 +273,18 @@ bool __attribute__((noinline)) display_external_outputs(
                        st->outputs.output_scripts[external_outputs_count],
                        out_scriptPubKey_len);
                 out_amount = st->outputs.output_amounts[external_outputs_count];
-            } else if (!get_output_script_and_amount(dc,
-                                                     st,
-                                                     cur_output_index,
-                                                     out_scriptPubKey,
-                                                     &out_scriptPubKey_len,
-                                                     &out_amount)) {
-                SEND_SW(dc, SW_INCORRECT_DATA);
-                return false;
+            } else {
+                if (!get_output_script_and_amount(dc,
+                                                  st,
+                                                  cur_output_index,
+                                                  out_scriptPubKey,
+                                                  &out_scriptPubKey_len)) {
+                    SEND_SW(dc, SW_INCORRECT_DATA);
+                    return false;
+                }
             }
 
             ++external_outputs_count;
-            PRINTF("out_scriptPubKey (len=%d): ", (int) out_scriptPubKey_len);
-            PRINTF_BUF(out_scriptPubKey, out_scriptPubKey_len);
-            PRINTF("Output amount: %d satoshi\n", (uint32_t) out_amount);
-            // displays the output. It fails if the output is invalid or not supported
             if (!display_output(dc,
                                 st,
                                 cur_output_index,
@@ -293,8 +292,10 @@ bool __attribute__((noinline)) display_external_outputs(
                                 out_scriptPubKey,
                                 out_scriptPubKey_len,
                                 out_amount)) {
+                PRINTF("display_output failed\n");
                 return false;
             }
+            PRINTF("display_output ok\n");
         }
     }
 
@@ -305,9 +306,10 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
                                   sign_psbt_state_t *st,
                                   size_t output_index,
                                   uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-                                  size_t *out_scriptPubKey_len,
-                                  uint64_t *out_amount) {
-    if (out_scriptPubKey == NULL || out_amount == NULL) {
+                                  size_t *out_scriptPubKey_len) {
+    // if (out_scriptPubKey == NULL || out_amount == NULL) {
+    if (out_scriptPubKey == NULL) {
+        PRINTF("get_output_script_and_amount: out_scriptPubKey or out_amount is NULL\n");
         SEND_SW(dc, SW_BAD_STATE);
         return false;
     }
@@ -337,8 +339,6 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
         SEND_SW(dc, SW_INCORRECT_DATA);
         return false;
     }
-    // uint64_t value = read_u64_le(raw_result, 0);
-    // *out_amount = value;
 
     // Read the output's scriptPubKey
     result_len = call_get_merkleized_map_value(dc,
@@ -366,21 +366,11 @@ bool __attribute__((noinline)) display_output(
     const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
     size_t out_scriptPubKey_len,
     uint64_t out_amount) {
+    PRINTF("display output enter\n");
     (void) cur_output_index;
 
     // show this output's address
     char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
-
-    // chester
-    // if it is the sign message in BIP322
-    // to avoid it is mis-used(attacked) for normal transaction
-    // we check amount=0, address=OP_RETURN
-    // if (st->bbn_action_type == BBN_POLICY_BIP322) {
-    //     if (!is_opreturn(out_scriptPubKey, out_scriptPubKey_len) || out_amount != 0) {
-    //         SEND_SW(dc, SW_NOT_SUPPORTED);
-    //         return false;
-    //     }
-    // }
 
     if (!format_script(out_scriptPubKey, out_scriptPubKey_len, output_description)) {
         PRINTF("Invalid or unsupported script for output %d\n", cur_output_index);
@@ -428,6 +418,80 @@ bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
                             status_operation_callback);
 
     // blocking call until the user approves or rejects the transaction
+    bool result = io_ui_process(dc);
+    if (!result) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+
+    return true;
+}
+
+int convert_bits(uint8_t *out,
+                 size_t *outlen,
+                 int outbits,
+                 const uint8_t *in,
+                 size_t inlen,
+                 int inbits,
+                 int pad) {
+    uint32_t val = 0;
+    int bits = 0;
+    uint32_t maxv = (((uint32_t) 1) << outbits) - 1;
+    while (inlen--) {
+        val = (val << inbits) | *(in++);
+        bits += inbits;
+        while (bits >= outbits) {
+            bits -= outbits;
+            out[(*outlen)++] = (val >> bits) & maxv;
+        }
+    }
+    if (pad) {
+        if (bits) {
+            out[(*outlen)++] = (val << (outbits - bits)) & maxv;
+        }
+    } else if (((val << (outbits - bits)) & maxv) || bits >= inbits) {
+        return 0;
+    }
+    return 1;
+}
+
+bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
+    nbgl_layoutTagValue_t pairs[16];
+    nbgl_layoutTagValueList_t pairList;
+    uint8_t message[64] = {0};
+    size_t message_len = 0;
+    char message_str[128] = {0};
+
+    convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
+    bech32_encode(message_str,
+                  (const char *) "bbn",
+                  message,
+                  message_len,
+                  BECH32_ENCODING_BECH32);  // bech32 encode the message
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+    const char *name = "message";
+    uint8_t s_name[64];
+    uint8_t s_value[128];
+
+    snprintf((char *) s_value, sizeof(s_value), "%s", message_str);
+    snprintf((char *) s_name, sizeof(s_name), "%s", name);
+    // Setup data to display
+    pairs[0].item = (const char *) s_name;
+    pairs[0].value = (const char *) s_value;
+
+    // Setup list
+    pairList.nbMaxLinesForValue = 0;
+    pairList.nbPairs = 1;
+    pairList.pairs = pairs;
+
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Sign message action",
+                            NULL,
+                            "Confirm sign message action",
+                            status_operation_callback);
     bool result = io_ui_process(dc);
     if (!result) {
         SEND_SW(dc, SW_DENY);
