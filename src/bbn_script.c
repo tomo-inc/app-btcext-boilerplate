@@ -260,14 +260,7 @@ void compute_bip322_txid_by_message(const uint8_t *message,
     char converted_message[32 * 4] = {0};
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
-
-    bbn_convert_bits(converted_5bit, &datalen, 5, message, message_len, 8, 1);
-    bech32_encode(converted_message,
-                  (const char *) "bbn",
-                  converted_5bit,
-                  datalen,
-                  BECH32_ENCODING_BECH32);  // bech32 encode the message
-    crypto_hash_update(&sighash_context.header, converted_message, strlen(converted_message));
+    crypto_hash_update(&sighash_context.header, message, message_len);
     crypto_hash_digest(&sighash_context.header, hash, 32);
 
     memcpy(tx + OFFSET_MSG_HASH, hash, 32);
