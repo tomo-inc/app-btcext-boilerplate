@@ -458,23 +458,15 @@ int convert_bits(uint8_t *out,
 bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
     nbgl_layoutTagValue_t pairs[16];
     nbgl_layoutTagValueList_t pairList;
-    uint8_t message[64] = {0};
-    size_t message_len = 0;
-    char message_str[128] = {0};
 
-    convert_bits(message, &message_len, 5, g_bbn_data.message, g_bbn_data.message_len, 8, 1);
-    bech32_encode(message_str,
-                  (const char *) "bbn",
-                  message,
-                  message_len,
-                  BECH32_ENCODING_BECH32);  // bech32 encode the message
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
     const char *name = "message";
-    uint8_t s_name[64];
-    uint8_t s_value[128];
+    uint8_t s_name[64] = { 0 };
+    uint8_t s_value[256] = { 0 };
+    g_bbn_data.message[g_bbn_data.message_len] = '\0';
 
-    snprintf((char *) s_value, sizeof(s_value), "%s", message_str);
+    snprintf((char *) s_value, sizeof(s_value), "%s", g_bbn_data.message);
     snprintf((char *) s_name, sizeof(s_name), "%s", name);
     // Setup data to display
     pairs[0].item = (const char *) s_name;
@@ -484,7 +476,6 @@ bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = 1;
     pairList.pairs = pairs;
-
     nbgl_useCaseReviewLight(TYPE_OPERATION,
                             &pairList,
                             &ICON_APP_ACTION,
@@ -497,6 +488,5 @@ bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
         SEND_SW(dc, SW_DENY);
         return false;
     }
-
     return true;
 }

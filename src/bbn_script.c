@@ -260,6 +260,7 @@ void compute_bip322_txid_by_message(const uint8_t *message,
     char converted_message[32 * 4] = {0};
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
+
     crypto_hash_update(&sighash_context.header, message, message_len);
     crypto_hash_digest(&sighash_context.header, hash, 32);
 

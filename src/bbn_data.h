@@ -1,8 +1,8 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdbool.h>  // 添加这行
-
+#include <stdbool.h> 
+#include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #ifndef BBN_DATA_DEF_H
 #define BBN_DATA_DEF_H
 
@@ -77,7 +77,7 @@ typedef struct {
     uint64_t unbonding_fee_limit;
 
     bool has_message;
-    uint8_t message[128];
+    uint8_t message[256];
     uint32_t message_len;
 
     bool has_message_key;
