@@ -142,7 +142,7 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-    PRINTF("tapscript length: %d\n", offset);
+    PRINTF("compute_bbn_leafhash_slashing tapscript length: %d\n", offset);
     PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
@@ -161,7 +161,7 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
 
     offset += 32;
     tapscript[offset++] = 0xad;
-
+  
     if (g_bbn_data.has_cov_key_list) {
         if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
             return false;
@@ -170,10 +170,6 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
             tapscript[offset++] = 0x20;
             memcpy(tapscript + offset, g_bbn_data.cov_key_list[i], 32);
             offset += 32;
-             if(g_bbn_data.fp_count == 1){
-                tapscript[offset++] = 0xad;
-                break;
-            }
             if (i == 0)
                 tapscript[offset++] = 0xac;
             else
@@ -182,20 +178,14 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
     } else {
         return false;
     }
-    if(g_bbn_data.fp_count > 1) {
-        if (g_bbn_data.has_fp_quorum)
-            tapscript[offset++] = 0x50 + g_bbn_data.fp_quorum;
-        else
-            return false;
-        tapscript[offset++] = 0x9d;
-    }
     if (g_bbn_data.has_cov_quorum)
         tapscript[offset++] = 0x50 + g_bbn_data.cov_quorum;
     else
         return false;
 
     tapscript[offset++] = 0x9c;
-
+    PRINTF("compute_bbn_leafhash_unbonding tapscript length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
@@ -229,6 +219,8 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         PRINTF("No timelock found\n");
         return false;
     }
+    PRINTF("compute_bbn_leafhash_timelock tapscript length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
 }

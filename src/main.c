@@ -380,13 +380,21 @@ bool sign_custom_inputs(
                 }
                 PRINTF("sighash: ");
                 PRINTF_BUF(sighash, 32);
+                uint8_t dummy[128];
+                const uint8_t *tweak_data = dummy;
+                size_t tweak_data_len = 0;
+                if(g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER) {
+                    tweak_data = NULL;
+                    tweak_data_len = 0;
+                }
+                
                 if (!sign_sighash_schnorr_and_yield(dc,
                                                     st,
                                                     i,
                                                     g_bbn_data.derive_path,
                                                     g_bbn_data.derive_path_len,
-                                                    NULL,
-                                                    0,
+                                                    tweak_data,
+                                                    tweak_data_len,
                                                     leafhash,
                                                     SIGHASH_DEFAULT,
                                                     sighash)) {
