@@ -197,9 +197,11 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         }
     }
     if (g_bbn_data.has_timelock) {
-        if (!display_timelock(dc, (uint32_t) g_bbn_data.timelock)) {
-            PRINTF("display_timelock failed\n");
-            return false;
+        if(g_bbn_data.action_type != BBN_POLICY_SLASHING && g_bbn_data.action_type != BBN_POLICY_SLASHING_UNBONDING) {
+            if (!display_timelock(dc, (uint32_t) g_bbn_data.timelock)) {
+                PRINTF("display_timelock failed\n");
+                return false;
+            }
         }
     }
 
@@ -380,13 +382,21 @@ bool sign_custom_inputs(
                 }
                 PRINTF("sighash: ");
                 PRINTF_BUF(sighash, 32);
+                uint8_t dummy[128];
+                const uint8_t *tweak_data = dummy;
+                size_t tweak_data_len = 0;
+                if(g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER) {
+                    tweak_data = NULL;
+                    tweak_data_len = 0;
+                }
+                
                 if (!sign_sighash_schnorr_and_yield(dc,
                                                     st,
                                                     i,
                                                     g_bbn_data.derive_path,
                                                     g_bbn_data.derive_path_len,
-                                                    NULL,
-                                                    0,
+                                                    tweak_data,
+                                                    tweak_data_len,
                                                     leafhash,
                                                     SIGHASH_DEFAULT,
                                                     sighash)) {

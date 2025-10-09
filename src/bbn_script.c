@@ -99,11 +99,27 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
         for (int i = 0; i < g_bbn_data.fp_count; i++) {
             memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
             offset += 32;
-            tapscript[offset++] = 0xad;  // TODO confirm multi FP is single sig or multi-sig
+
+            if(g_bbn_data.fp_count == 1){
+                tapscript[offset++] = 0xad;
+                break;
+            }
+            if (i == 0)
+                tapscript[offset++] = 0xac;
+            else
+                tapscript[offset++] = 0xba;
         }
     } else {
         return false;
     }
+    if(g_bbn_data.fp_count > 1) {
+        if (g_bbn_data.has_fp_quorum)
+            tapscript[offset++] = 0x50 + g_bbn_data.fp_quorum;
+        else
+            return false;
+        tapscript[offset++] = 0x9d;
+    }
+
     if (g_bbn_data.has_cov_key_list) {
         if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
             return false;
@@ -126,7 +142,7 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-    PRINTF("tapscript length: %d\n", offset);
+    PRINTF("compute_bbn_leafhash_slashing tapscript length: %d\n", offset);
     PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
@@ -145,7 +161,7 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
 
     offset += 32;
     tapscript[offset++] = 0xad;
-
+  
     if (g_bbn_data.has_cov_key_list) {
         if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
             return false;
@@ -168,7 +184,8 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-
+    PRINTF("compute_bbn_leafhash_unbonding tapscript length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
@@ -202,6 +219,8 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         PRINTF("No timelock found\n");
         return false;
     }
+    PRINTF("compute_bbn_leafhash_timelock tapscript length: %d\n", offset);
+    PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
 }
@@ -234,13 +253,7 @@ void compute_bip322_txid_by_message(const uint8_t *message,
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
 
-    bbn_convert_bits(converted_5bit, &datalen, 5, message, message_len, 8, 1);
-    bech32_encode(converted_message,
-                  (const char *) "bbn",
-                  converted_5bit,
-                  datalen,
-                  BECH32_ENCODING_BECH32);  // bech32 encode the message
-    crypto_hash_update(&sighash_context.header, converted_message, strlen(converted_message));
+    crypto_hash_update(&sighash_context.header, message, message_len);
     crypto_hash_digest(&sighash_context.header, hash, 32);
 
     memcpy(tx + OFFSET_MSG_HASH, hash, 32);
