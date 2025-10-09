@@ -76,6 +76,11 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
         }
         size_t n_chunks = (data_length + CHUNK_SIZE - 1) / CHUNK_SIZE;
 
+        if (n_chunks > MAX_CHUNK_COUNT) {
+            SEND_SW(dc, SW_INCORRECT_DATA);
+            return false;
+        }
+
         uint8_t complete_data[1024];
 
         size_t received_data = 0;
@@ -92,6 +97,10 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             size_t copy_len = (received_data + chunk_len <= data_length)
                                   ? chunk_len
                                   : (data_length - received_data);
+            if (copy_len + received_data > sizeof(complete_data)) {
+                SEND_SW(dc, SW_INCORRECT_DATA);
+                return false;
+            }
             memcpy(complete_data + received_data, chunk, copy_len);
             received_data += copy_len;
         }
@@ -197,7 +206,8 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         }
     }
     if (g_bbn_data.has_timelock) {
-        if(g_bbn_data.action_type != BBN_POLICY_SLASHING && g_bbn_data.action_type != BBN_POLICY_SLASHING_UNBONDING) {
+        if (g_bbn_data.action_type != BBN_POLICY_SLASHING &&
+            g_bbn_data.action_type != BBN_POLICY_SLASHING_UNBONDING) {
             if (!display_timelock(dc, (uint32_t) g_bbn_data.timelock)) {
                 PRINTF("display_timelock failed\n");
                 return false;
@@ -385,11 +395,11 @@ bool sign_custom_inputs(
                 uint8_t dummy[128];
                 const uint8_t *tweak_data = dummy;
                 size_t tweak_data_len = 0;
-                if(g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER) {
+                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER) {
                     tweak_data = NULL;
                     tweak_data_len = 0;
                 }
-                
+
                 if (!sign_sighash_schnorr_and_yield(dc,
                                                     st,
                                                     i,

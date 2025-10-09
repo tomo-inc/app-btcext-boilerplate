@@ -1,8 +1,9 @@
 #ifndef BBN_DEF_H
 #define BBN_DEF_H
 
-#define INS_CUSTOM_TLV 0xbb
-#define CHUNK_SIZE     64
+#define INS_CUSTOM_TLV  0xbb
+#define CHUNK_SIZE      64
+#define MAX_CHUNK_COUNT 15
 
 #define BBN_POLICY_NAME_SLASHING           "Consent to slashing"
 #define BBN_POLICY_NAME_SLASHING_UNBONDING "Consent to unbonding slashing"

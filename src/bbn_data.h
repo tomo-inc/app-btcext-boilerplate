@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdbool.h> 
+#include <stdbool.h>
 #include "../bitcoin_app_base/src/handler/lib/get_merkleized_map.h"
 #ifndef BBN_DATA_DEF_H
 #define BBN_DATA_DEF_H
