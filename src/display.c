@@ -462,8 +462,8 @@ bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
     const char *name = "message";
-    uint8_t s_name[64] = { 0 };
-    uint8_t s_value[256] = { 0 };
+    uint8_t s_name[64] = {0};
+    uint8_t s_value[256] = {0};
     g_bbn_data.message[g_bbn_data.message_len] = '\0';
 
     snprintf((char *) s_value, sizeof(s_value), "%s", g_bbn_data.message);

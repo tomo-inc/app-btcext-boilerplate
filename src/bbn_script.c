@@ -100,7 +100,7 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
             memcpy(tapscript + offset, g_bbn_data.fp_list[i], 32);
             offset += 32;
 
-            if(g_bbn_data.fp_count == 1){
+            if (g_bbn_data.fp_count == 1) {
                 tapscript[offset++] = 0xad;
                 break;
             }
@@ -112,7 +112,7 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
     } else {
         return false;
     }
-    if(g_bbn_data.fp_count > 1) {
+    if (g_bbn_data.fp_count > 1) {
         if (g_bbn_data.has_fp_quorum)
             tapscript[offset++] = 0x50 + g_bbn_data.fp_quorum;
         else
@@ -161,7 +161,7 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
 
     offset += 32;
     tapscript[offset++] = 0xad;
-  
+
     if (g_bbn_data.has_cov_key_list) {
         if (g_bbn_data.cov_key_count > MAX_COV_KEY_COUNT) {
             return false;
@@ -247,9 +247,6 @@ void compute_bip322_txid_by_message(const uint8_t *message,
     uint8_t tx[] = {TX_PREFIX, TX_DUMMY_TXID, TX_MIDFIX, TX_DUMMY_TXID, TX_SUFFIX};
     cx_sha256_t sighash_context, txhash_context, txid_context;
     uint8_t hash[32];
-    uint8_t converted_5bit[32 * 2] = {0};
-    size_t datalen = 0;
-    char converted_message[32 * 4] = {0};
 
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
 
