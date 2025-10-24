@@ -47,12 +47,12 @@ typedef enum {
 #define TX_LOCKTIME  0x00, 0x00, 0x00, 0x00
 
 // Native SegWit (P2WPKH) BIP-322 constants
-#define TX_SPK_LEN_P2WPKH   0x16  // 22 bytes
-#define TX_SPK_TAG_P2WPKH   0x00, 0x14  // OP_0 + 20 bytes length
+#define TX_SPK_LEN_P2WPKH 0x16        // 22 bytes
+#define TX_SPK_TAG_P2WPKH 0x00, 0x14  // OP_0 + 20 bytes length
 
-#define OFFSET_MSG_HASH 44
-#define OFFSET_PUBKEY   92
-#define OFFSET_PUBKEY_P2WPKH   90  // P2WPKH pubkey hash offset (2 bytes less than Taproot)
+#define OFFSET_MSG_HASH      44
+#define OFFSET_PUBKEY        92
+#define OFFSET_PUBKEY_P2WPKH 90  // P2WPKH pubkey hash offset (2 bytes less than Taproot)
 
 // Fixed parts of tx as macros
 #define TX_PREFIX \
@@ -60,7 +60,8 @@ typedef enum {
 
 #define TX_MIDFIX TX_SEQ_BYTES, TX_OUT_CNT, TX_OUT_VALUE, TX_SPK_LEN, TX_SPK_TAG
 
-#define TX_MIDFIX_P2WPKH TX_SEQ_BYTES, TX_OUT_CNT, TX_OUT_VALUE, TX_SPK_LEN_P2WPKH, TX_SPK_TAG_P2WPKH
+#define TX_MIDFIX_P2WPKH \
+    TX_SEQ_BYTES, TX_OUT_CNT, TX_OUT_VALUE, TX_SPK_LEN_P2WPKH, TX_SPK_TAG_P2WPKH
 
 #define TX_SUFFIX TX_LOCKTIME
 

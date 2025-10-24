@@ -1,12 +1,12 @@
 #include <stdbool.h>
-#include <string.h>  // 添加这行
+#include <string.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include "../bitcoin_app_base/src/common/segwit_addr.h"
 #include "../bitcoin_app_base/src/handler/sign_psbt.h"
-#include "../bitcoin_app_base/src/common/wallet.h"  // 添加这行，用于 get_extended_pubkey_at_path
-#include "../bitcoin_app_base/src/crypto.h"        // 添加这行，用于 BIP32_PUBKEY_VERSION
-#include "../bitcoin_app_base/src/common/bip32.h"  // 添加这行，用于 BIP32_FIRST_HARDENED_CHILD
+#include "../bitcoin_app_base/src/common/wallet.h"
+#include "../bitcoin_app_base/src/crypto.h"
+#include "../bitcoin_app_base/src/common/bip32.h"
 #include "bbn_pub.h"
 #include "bbn_script.h"
 #include "bbn_def.h"
@@ -192,25 +192,26 @@ bool bbn_check_message(uint8_t *psbt_txid) {
     // Check BIP32 path to determine address type
     if (g_bbn_data.derive_path_len >= 1) {
         uint32_t purpose = g_bbn_data.derive_path[0] & ~BIP32_FIRST_HARDENED_CHILD;
-        
+
         if (purpose == 84) {
             // Native SegWit (P2WPKH) - need to derive compressed pubkey
             PRINTF("Using P2WPKH BIP-322 verification\n");
-            
+
             // Get full compressed pubkey (33 bytes) for P2WPKH
             serialized_extended_pubkey_t xpub;
-            if (0 > get_extended_pubkey_at_path(g_bbn_data.derive_path, 
-                                                g_bbn_data.derive_path_len, 
-                                                BIP32_PUBKEY_VERSION, 
+            if (0 > get_extended_pubkey_at_path(g_bbn_data.derive_path,
+                                                g_bbn_data.derive_path_len,
+                                                BIP32_PUBKEY_VERSION,
                                                 &xpub)) {
                 PRINTF("Failed to derive extended pubkey for P2WPKH\n");
                 return false;
             }
-            
-            compute_bip322_txid_by_message_p2wpkh(g_bbn_data.message,
-                                                  g_bbn_data.message_len,
-                                                  xpub.compressed_pubkey,  // 33-byte compressed pubkey
-                                                  txid);
+
+            compute_bip322_txid_by_message_p2wpkh(
+                g_bbn_data.message,
+                g_bbn_data.message_len,
+                xpub.compressed_pubkey,  // 33-byte compressed pubkey
+                txid);
         } else if (purpose == 86) {
             // Taproot (P2TR) - use x-only pubkey from message_key
             PRINTF("Using Taproot BIP-322 verification\n");
@@ -226,7 +227,7 @@ bool bbn_check_message(uint8_t *psbt_txid) {
         PRINTF("Invalid BIP32 path length\n");
         return false;
     }
-    
+
     PRINTF("Computed txid: ");
     PRINTF_BUF(txid, 32);
     if (memcmp(txid, psbt_txid, 32) != 0) {

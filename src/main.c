@@ -258,8 +258,8 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             }
             if (!bbn_check_message(psbt_txid)) {
                 PRINTF("bbn_check_message_key failed\n");
-                //SEND_SW(dc, SW_DENY);
-                //return false;
+                SEND_SW(dc, SW_DENY);
+                return false;
             }
             break;
         case BBN_POLICY_WITHDRAW:
