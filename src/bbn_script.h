@@ -18,6 +18,12 @@ void compute_bip322_txid_by_message(const uint8_t *message,
                                     size_t message_len,
                                     const uint8_t *tappub,
                                     uint8_t *txid_out);
+
+void compute_bip322_txid_by_message_p2wpkh(const uint8_t *message,
+                                           size_t message_len,
+                                           const uint8_t *compressed_pubkey,
+                                           uint8_t *txid_out);
+
 int bbn_convert_bits(uint8_t *out,
                      size_t *outlen,
                      int outbits,
