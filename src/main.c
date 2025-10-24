@@ -16,6 +16,7 @@
 #include "bbn_script.h"
 #include "bbn_script.h"
 #include "bbn_address.h"
+#include "bbn_schnorr.h"
 #include "display.h"
 
 bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, uint8_t *txid) {
@@ -307,6 +308,8 @@ bool sign_custom_inputs(
                 PRINTF("Failed to get input map for input %d\n", i);
                 return false;
             }
+            int segwit_version = get_policy_segwit_version(st->wallet_policy_map);
+
             uint8_t sighash[32];
             uint8_t leafhash[32];
             uint8_t *pLeaf;
@@ -315,6 +318,7 @@ bool sign_custom_inputs(
                 case BBN_POLICY_SLASHING_UNBONDING:
                     compute_bbn_leafhash_slashing(leafhash);
                     pLeaf = leafhash;
+                    segwit_version = 1;  // force taproot
                     break;
                 case BBN_POLICY_STAKE_TRANSFER:
                     pLeaf = NULL;
@@ -322,15 +326,17 @@ bool sign_custom_inputs(
                 case BBN_POLICY_UNBOND:
                     compute_bbn_leafhash_unbonding(leafhash);
                     pLeaf = leafhash;
+                    segwit_version = 1;  // force taproot
                     break;
                 case BBN_POLICY_WITHDRAW:
                     compute_bbn_leafhash_timelock(leafhash);
                     pLeaf = leafhash;
+                    segwit_version = 1;  // force taproot
                     break;
                 default:
                     break;
             }
-            int segwit_version = get_policy_segwit_version(st->wallet_policy_map);
+
             if (segwit_version == 0)  // native segwit
             {
                 PRINTF("native segwit %d\n", segwit_version);
@@ -400,16 +406,16 @@ bool sign_custom_inputs(
                     tweak_data_len = 0;
                 }
 
-                if (!sign_sighash_schnorr_and_yield(dc,
-                                                    st,
-                                                    i,
-                                                    g_bbn_data.derive_path,
-                                                    g_bbn_data.derive_path_len,
-                                                    tweak_data,
-                                                    tweak_data_len,
-                                                    leafhash,
-                                                    SIGHASH_DEFAULT,
-                                                    sighash)) {
+                if (!bbn_sign_sighash_schnorr_and_yield(dc,
+                                                        st,
+                                                        i,
+                                                        g_bbn_data.derive_path,
+                                                        g_bbn_data.derive_path_len,
+                                                        tweak_data,
+                                                        tweak_data_len,
+                                                        leafhash,
+                                                        SIGHASH_DEFAULT,
+                                                        sighash)) {
                     PRINTF("Failed to sign input %d\n", i);
                     return false;
                 }
