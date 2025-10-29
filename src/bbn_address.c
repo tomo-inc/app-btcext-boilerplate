@@ -184,11 +184,6 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st) {
 bool bbn_check_message(uint8_t *psbt_txid) {
     uint8_t txid[32];
 
-    if (!g_bbn_data.has_message || !g_bbn_data.has_message_key) {
-        PRINTF("Missing required data for message check\n");
-        return false;
-    }
-
     // Check BIP32 path to determine address type
     if (g_bbn_data.derive_path_len >= 1) {
         uint32_t purpose = g_bbn_data.derive_path[0] & ~BIP32_FIRST_HARDENED_CHILD;
@@ -196,6 +191,11 @@ bool bbn_check_message(uint8_t *psbt_txid) {
         if (purpose == 84) {
             // Native SegWit (P2WPKH) - need to derive compressed pubkey
             PRINTF("Using P2WPKH BIP-322 verification\n");
+            
+            if (!g_bbn_data.has_message) {
+                PRINTF("Missing message data for P2WPKH BIP-322\n");
+                return false;
+            }
 
             // Get full compressed pubkey (33 bytes) for P2WPKH
             serialized_extended_pubkey_t xpub;
@@ -206,6 +206,11 @@ bool bbn_check_message(uint8_t *psbt_txid) {
                 PRINTF("Failed to derive extended pubkey for P2WPKH\n");
                 return false;
             }
+            
+            PRINTF("P2WPKH message: ");
+            PRINTF_BUF(g_bbn_data.message, g_bbn_data.message_len);
+            PRINTF("P2WPKH compressed pubkey: ");
+            PRINTF_BUF(xpub.compressed_pubkey, 33);
 
             compute_bip322_txid_by_message_p2wpkh(
                 g_bbn_data.message,
@@ -213,6 +218,10 @@ bool bbn_check_message(uint8_t *psbt_txid) {
                 xpub.compressed_pubkey,  // 33-byte compressed pubkey
                 txid);
         } else if (purpose == 86) {
+                if (!g_bbn_data.has_message || !g_bbn_data.has_message_key) {
+                    PRINTF("Missing required data for message check\n");
+                    return false;
+                }
             // Taproot (P2TR) - use x-only pubkey from message_key
             PRINTF("Using Taproot BIP-322 verification\n");
             compute_bip322_txid_by_message(g_bbn_data.message,
@@ -228,8 +237,6 @@ bool bbn_check_message(uint8_t *psbt_txid) {
         return false;
     }
 
-    PRINTF("Computed txid: ");
-    PRINTF_BUF(txid, 32);
     if (memcmp(txid, psbt_txid, 32) != 0) {
         PRINTF("Expected txid: ");
         PRINTF_BUF(txid, 32);

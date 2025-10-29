@@ -52,7 +52,7 @@ typedef enum {
 
 #define OFFSET_MSG_HASH      44
 #define OFFSET_PUBKEY        92
-#define OFFSET_PUBKEY_P2WPKH 90  // P2WPKH pubkey hash offset (2 bytes less than Taproot)
+#define OFFSET_PUBKEY_P2WPKH 92  // P2WPKH pubkey hash offset (same as Taproot due to structure)
 
 // Fixed parts of tx as macros
 #define TX_PREFIX \
