@@ -191,7 +191,7 @@ bool bbn_check_message(uint8_t *psbt_txid) {
         if (purpose == 84) {
             // Native SegWit (P2WPKH) - need to derive compressed pubkey
             PRINTF("Using P2WPKH BIP-322 verification\n");
-            
+
             if (!g_bbn_data.has_message) {
                 PRINTF("Missing message data for P2WPKH BIP-322\n");
                 return false;
@@ -206,7 +206,7 @@ bool bbn_check_message(uint8_t *psbt_txid) {
                 PRINTF("Failed to derive extended pubkey for P2WPKH\n");
                 return false;
             }
-            
+
             PRINTF("P2WPKH message: ");
             PRINTF_BUF(g_bbn_data.message, g_bbn_data.message_len);
             PRINTF("P2WPKH compressed pubkey: ");
@@ -218,10 +218,10 @@ bool bbn_check_message(uint8_t *psbt_txid) {
                 xpub.compressed_pubkey,  // 33-byte compressed pubkey
                 txid);
         } else if (purpose == 86) {
-                if (!g_bbn_data.has_message || !g_bbn_data.has_message_key) {
-                    PRINTF("Missing required data for message check\n");
-                    return false;
-                }
+            if (!g_bbn_data.has_message || !g_bbn_data.has_message_key) {
+                PRINTF("Missing required data for message check\n");
+                return false;
+            }
             // Taproot (P2TR) - use x-only pubkey from message_key
             PRINTF("Using Taproot BIP-322 verification\n");
             compute_bip322_txid_by_message(g_bbn_data.message,
