@@ -68,6 +68,11 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     if (cmd->cla != CLA_APP) {
         return false;
     }
+        /* Disabling SIGN_MESSAGE command */
+    if (cmd->ins == SIGN_MESSAGE) {
+        io_send_sw(SW_CLA_NOT_SUPPORTED);
+        return true;
+    }
 
     if (cmd->ins == INS_CUSTOM_TLV) {
         if (!buffer_read_varint(&dc->read_buffer, &data_length) ||
