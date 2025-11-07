@@ -68,6 +68,11 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     if (cmd->cla != CLA_APP) {
         return false;
     }
+        /* Disabling SIGN_MESSAGE command */
+    if (cmd->ins == SIGN_MESSAGE) {
+        io_send_sw(SW_CLA_NOT_SUPPORTED);
+        return true;
+    }
 
     if (cmd->ins == INS_CUSTOM_TLV) {
         if (!buffer_read_varint(&dc->read_buffer, &data_length) ||
@@ -173,8 +178,8 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     g_bbn_data.has_staker_pk = true;
     PRINTF("g_bbn_data.staker_pk: ");
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
-
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
+
     if (g_bbn_data.action_type == BBN_POLICY_BIP322) {
         if (!ui_confirm_bbn_message(dc)) {
             PRINTF("ui_confirm_bbn_message failed\n");
@@ -220,7 +225,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         PRINTF("display_external_outputs fail \n");
         return false;
     }
-    PRINTF("display_external_outputs ok\n");
+
     if (st->warnings.high_fee && !ui_warn_high_fee(dc)) {
         PRINTF("ui_warn_high_fee fail \n");
         SEND_SW(dc, SW_DENY);

@@ -268,7 +268,33 @@ void compute_bip322_txid_by_message_p2wpkh(const uint8_t *message,
                                            size_t message_len,
                                            const uint8_t *compressed_pubkey,
                                            uint8_t *txid_out) {
-    uint8_t tx[] = {TX_PREFIX, TX_DUMMY_TXID, TX_MIDFIX_P2WPKH, TX_DUMMY_TXID, TX_SUFFIX};
+    // Build P2WPKH BIP-322 transaction: prefix + message_hash + midfix + pubkey_hash + suffix
+    uint8_t tx[116] = {0};  // Pre-calculated size for P2WPKH transaction
+    size_t offset = 0;
+
+    // TX_PREFIX (44 bytes)
+    uint8_t tx_prefix[] = {TX_PREFIX};
+    memcpy(tx + offset, tx_prefix, sizeof(tx_prefix));
+    offset += sizeof(tx_prefix);
+
+    // Message hash placeholder (32 bytes) - will be filled later
+    uint8_t message_hash_offset = offset;
+    offset += 32;
+
+    // TX_MIDFIX_P2WPKH (16 bytes)
+    uint8_t tx_midfix[] = {TX_MIDFIX_P2WPKH};
+    memcpy(tx + offset, tx_midfix, sizeof(tx_midfix));
+    offset += sizeof(tx_midfix);
+
+    // Pubkey hash placeholder (20 bytes) - will be filled later
+    uint8_t pubkey_hash_offset = offset;
+    offset += 20;
+
+    // TX_SUFFIX (4 bytes)
+    uint8_t tx_suffix[] = {TX_LOCKTIME};
+    memcpy(tx + offset, tx_suffix, sizeof(tx_suffix));
+    offset += sizeof(tx_suffix);
+
     cx_sha256_t sighash_context, txhash_context, txid_context;
     uint8_t hash[32];
 
@@ -276,18 +302,14 @@ void compute_bip322_txid_by_message_p2wpkh(const uint8_t *message,
     crypto_tr_tagged_hash_init(&sighash_context, BIP0322_msghash_tag, sizeof(BIP0322_msghash_tag));
     crypto_hash_update(&sighash_context.header, message, message_len);
     crypto_hash_digest(&sighash_context.header, hash, 32);
+    memcpy(tx + message_hash_offset, hash, 32);
 
-    // Insert message hash into transaction
-    memcpy(tx + OFFSET_MSG_HASH, hash, 32);
-
-    // Compute pubkey hash and insert into P2WPKH scriptPubKey
     uint8_t pubkey_hash[20];
     crypto_hash160(compressed_pubkey, 33, pubkey_hash);
-    memcpy(tx + OFFSET_PUBKEY_P2WPKH, pubkey_hash, 20);
+    memcpy(tx + pubkey_hash_offset, pubkey_hash, 20);
 
-    // Double SHA256 to get txid
     cx_sha256_init(&txhash_context);
-    crypto_hash_update(&txhash_context.header, tx, sizeof(tx));
+    crypto_hash_update(&txhash_context.header, tx, offset);
     crypto_hash_digest(&txhash_context.header, hash, 32);
     cx_sha256_init(&txid_context);
     crypto_hash_update(&txid_context.header, hash, 32);

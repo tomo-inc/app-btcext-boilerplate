@@ -366,7 +366,6 @@ bool __attribute__((noinline)) display_output(
     const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
     size_t out_scriptPubKey_len,
     uint64_t out_amount) {
-    PRINTF("display output enter\n");
     (void) cur_output_index;
 
     // show this output's address
