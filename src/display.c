@@ -209,6 +209,9 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
         case BBN_POLICY_BIP322:
             strncpy(action_name, BBN_POLICY_NAME_BIP322_MESSAGE, sizeof(action_name) - 1);
             break;
+        case BBN_POLICY_EXPANSION:
+            strncpy(action_name, BBN_POLICY_NAME_BIP322_EXPANSION, sizeof(action_name) - 1);
+            break;
         default:
             strncpy(action_name, "Unknown action", sizeof(action_name) - 1);
             break;
