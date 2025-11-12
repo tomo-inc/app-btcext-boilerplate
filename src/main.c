@@ -269,6 +269,13 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             break;
         case BBN_POLICY_WITHDRAW:
             break;
+        case BBN_POLICY_EXPANSION:
+            if (!bbn_check_staking_address(st)) {
+                PRINTF("bbn_check_expansion_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
         default:
             return false;
     }
@@ -395,10 +402,16 @@ bool sign_custom_inputs(
                     break;
                 case BBN_POLICY_EXPANSION:
                     if(i == 0) {
+                        // Input[0]: staking output, needs script path (unbonding script)
+                        compute_bbn_leafhash_unbonding(leafhash);
                         pLeaf = leafhash;
                         segwit_version = 1;  // force taproot
-                    }else {
-                        pLeaf = NULL;  // second input uses key path
+                        PRINTF("Input[0]: Using script path with unbonding leaf\n");
+                    } else {
+                        // Input[1]: normal UTXO, use key path (no script)
+                        pLeaf = NULL;
+                        segwit_version = 1;  // still taproot, but key path
+                        PRINTF("Input[1]: Using key path (no script)\n");
                     }                 
                     break;
                 default:
