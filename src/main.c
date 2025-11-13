@@ -410,8 +410,8 @@ bool sign_custom_inputs(
                     } else {
                         // Input[1]: normal UTXO, use key path (no script)
                         pLeaf = NULL;
-                        segwit_version = 1;  // still taproot, but key path
-                        PRINTF("Input[1]: Using key path (no script)\n");
+                        //segwit_version = 1;
+                        //PRINTF("Input[1]: Using key path (no script)\n");
                     }                 
                     break;
                 default:
@@ -482,9 +482,15 @@ bool sign_custom_inputs(
                 uint8_t dummy[128];
                 const uint8_t *tweak_data = dummy;
                 size_t tweak_data_len = 0;
-                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER) {
+                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER && g_bbn_data.action_type != BBN_POLICY_EXPANSION) {
                     tweak_data = NULL;
                     tweak_data_len = 0;
+                }
+                if(g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
+                    if(i == 0) {
+                        tweak_data = NULL;
+                        tweak_data_len = 0;
+                    }
                 }
 
                 if (!bbn_sign_sighash_schnorr_and_yield(dc,
@@ -494,7 +500,7 @@ bool sign_custom_inputs(
                                                         g_bbn_data.derive_path_len,
                                                         tweak_data,
                                                         tweak_data_len,
-                                                        leafhash,
+                                                        pLeaf,
                                                         SIGHASH_DEFAULT,
                                                         sighash)) {
                     PRINTF("Failed to sign input %d\n", i);
