@@ -11,6 +11,7 @@
 #define BBN_POLICY_NAME_UNBOND             "Unbonding"
 #define BBN_POLICY_NAME_WITHDRAW           "Withdraw"
 #define BBN_POLICY_NAME_BIP322_MESSAGE     "Sign message"
+#define BBN_POLICY_NAME_BIP322_EXPANSION   "Expansion"
 
 #define BBN_UNBONDING_MAX_FEE_CONST 9000
 #define BBN_UNBONDING_MIN_FEE_CONST 1000
@@ -25,6 +26,7 @@ typedef enum {
     BBN_POLICY_UNBOND,
     BBN_POLICY_WITHDRAW,
     BBN_POLICY_BIP322,
+    BBN_POLICY_EXPANSION
 } bbn_action_type_t;
 
 // Atomic byte constants

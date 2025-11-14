@@ -269,6 +269,13 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             break;
         case BBN_POLICY_WITHDRAW:
             break;
+        case BBN_POLICY_EXPANSION:
+            if (!bbn_check_staking_address(st)) {
+                PRINTF("bbn_check_expansion_address failed\n");
+                SEND_SW(dc, SW_DENY);
+                return false;
+            }
+            break;
         default:
             return false;
     }
@@ -303,7 +310,62 @@ bool sign_custom_inputs(
     sign_psbt_state_t *st,
     tx_hashes_t *tx_hashes,
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
-    // 遍历所有输入，找到外部输入并签名
+    
+    // Check input counts based on action type
+    switch (g_bbn_data.action_type) {
+        case BBN_POLICY_SLASHING:
+        case BBN_POLICY_SLASHING_UNBONDING:
+        case BBN_POLICY_UNBOND:
+        case BBN_POLICY_BIP322:
+            // These actions must have exactly 1 input
+            if (st->n_inputs != 1) {
+                PRINTF("Invalid input count for action %d: expected 1, got %d\n", 
+                       g_bbn_data.action_type, st->n_inputs);
+                SEND_SW(dc, SW_INCORRECT_DATA);
+                return false;
+            }
+            break;
+            
+        case BBN_POLICY_EXPANSION:
+            // Expansion must have exactly 2 inputs
+            // input[0]: original staking output (stake-output)
+            // input[1]: UTXO to pay fee or increase staking amount
+            if (st->n_inputs != 2) {
+                PRINTF("Invalid input count for expansion: expected 2, got %d\n", st->n_inputs);
+                SEND_SW(dc, SW_INCORRECT_DATA);
+                return false;
+            }
+            PRINTF("Expansion transaction with 2 inputs:\n");
+            PRINTF("  Input[0]: Staking output (script path unlock)\n");
+            PRINTF("  Input[1]: Fee/Amount UTXO\n");
+            break;
+            
+        case BBN_POLICY_STAKE_TRANSFER:
+            // Stake transfer can have multiple inputs (>= 1)
+            if (st->n_inputs < 1) {
+                PRINTF("Invalid input count for stake transfer: expected >= 1, got %d\n", 
+                       st->n_inputs);
+                SEND_SW(dc, SW_INCORRECT_DATA);
+                return false;
+            }
+            PRINTF("Stake transfer with %d input(s)\n", st->n_inputs);
+            break;
+            
+        case BBN_POLICY_WITHDRAW:
+            // Withdraw must have exactly 1 input
+            if (st->n_inputs != 1) {
+                PRINTF("Invalid input count for withdraw: expected 1, got %d\n", st->n_inputs);
+                SEND_SW(dc, SW_INCORRECT_DATA);
+                return false;
+            }
+            break;
+            
+        default:
+            PRINTF("Unknown action type: %d\n", g_bbn_data.action_type);
+            SEND_SW(dc, SW_INCORRECT_DATA);
+            return false;
+    }
+    
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
             PRINTF("Signing external input %d\n", i);
@@ -337,6 +399,20 @@ bool sign_custom_inputs(
                     compute_bbn_leafhash_timelock(leafhash);
                     pLeaf = leafhash;
                     segwit_version = 1;  // force taproot
+                    break;
+                case BBN_POLICY_EXPANSION:
+                    if(i == 0) {
+                        // Input[0]: staking output, needs script path (unbonding script)
+                        compute_bbn_leafhash_unbonding(leafhash);
+                        pLeaf = leafhash;
+                        segwit_version = 1;  // force taproot
+                        PRINTF("Input[0]: Using script path with unbonding leaf\n");
+                    } else {
+                        // Input[1]: normal UTXO, use key path (no script)
+                        pLeaf = NULL;
+                        //segwit_version = 1;
+                        //PRINTF("Input[1]: Using key path (no script)\n");
+                    }                 
                     break;
                 default:
                     break;
@@ -406,9 +482,15 @@ bool sign_custom_inputs(
                 uint8_t dummy[128];
                 const uint8_t *tweak_data = dummy;
                 size_t tweak_data_len = 0;
-                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER) {
+                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER && g_bbn_data.action_type != BBN_POLICY_EXPANSION) {
                     tweak_data = NULL;
                     tweak_data_len = 0;
+                }
+                if(g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
+                    if(i == 0) {
+                        tweak_data = NULL;
+                        tweak_data_len = 0;
+                    }
                 }
 
                 if (!bbn_sign_sighash_schnorr_and_yield(dc,
@@ -418,7 +500,7 @@ bool sign_custom_inputs(
                                                         g_bbn_data.derive_path_len,
                                                         tweak_data,
                                                         tweak_data_len,
-                                                        leafhash,
+                                                        pLeaf,
                                                         SIGHASH_DEFAULT,
                                                         sighash)) {
                     PRINTF("Failed to sign input %d\n", i);
