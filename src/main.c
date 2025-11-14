@@ -31,7 +31,7 @@ bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, 
     uint8_t ith_prevout_hash[32];
     if (32 != call_get_merkleized_map_value(dc,
                                             &ith_map,
-                                            (uint8_t[]) {PSBT_IN_PREVIOUS_TXID},
+                                            (uint8_t[]){PSBT_IN_PREVIOUS_TXID},
                                             1,
                                             ith_prevout_hash,
                                             32)) {
@@ -49,7 +49,7 @@ bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
     uint8_t buf[256];
     int32_t len = call_get_merkleized_map_value(dc,
                                                 input_map,
-                                                (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT},
+                                                (uint8_t[]){PSBT_IN_TAP_LEAF_SCRIPT},
                                                 1,
                                                 buf,
                                                 sizeof(buf));
@@ -68,7 +68,7 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
     if (cmd->cla != CLA_APP) {
         return false;
     }
-        /* Disabling SIGN_MESSAGE command */
+    /* Disabling SIGN_MESSAGE command */
     if (cmd->ins == SIGN_MESSAGE) {
         io_send_sw(SW_CLA_NOT_SUPPORTED);
         return true;
@@ -310,7 +310,6 @@ bool sign_custom_inputs(
     sign_psbt_state_t *st,
     tx_hashes_t *tx_hashes,
     const uint8_t internal_inputs[static BITVECTOR_REAL_SIZE(MAX_N_INPUTS_CAN_SIGN)]) {
-    
     // Check input counts based on action type
     switch (g_bbn_data.action_type) {
         case BBN_POLICY_SLASHING:
@@ -319,13 +318,14 @@ bool sign_custom_inputs(
         case BBN_POLICY_BIP322:
             // These actions must have exactly 1 input
             if (st->n_inputs != 1) {
-                PRINTF("Invalid input count for action %d: expected 1, got %d\n", 
-                       g_bbn_data.action_type, st->n_inputs);
+                PRINTF("Invalid input count for action %d: expected 1, got %d\n",
+                       g_bbn_data.action_type,
+                       st->n_inputs);
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
             break;
-            
+
         case BBN_POLICY_EXPANSION:
             // Expansion must have exactly 2 inputs
             // input[0]: original staking output (stake-output)
@@ -339,18 +339,18 @@ bool sign_custom_inputs(
             PRINTF("  Input[0]: Staking output (script path unlock)\n");
             PRINTF("  Input[1]: Fee/Amount UTXO\n");
             break;
-            
+
         case BBN_POLICY_STAKE_TRANSFER:
             // Stake transfer can have multiple inputs (>= 1)
             if (st->n_inputs < 1) {
-                PRINTF("Invalid input count for stake transfer: expected >= 1, got %d\n", 
+                PRINTF("Invalid input count for stake transfer: expected >= 1, got %d\n",
                        st->n_inputs);
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
             PRINTF("Stake transfer with %d input(s)\n", st->n_inputs);
             break;
-            
+
         case BBN_POLICY_WITHDRAW:
             // Withdraw must have exactly 1 input
             if (st->n_inputs != 1) {
@@ -359,13 +359,13 @@ bool sign_custom_inputs(
                 return false;
             }
             break;
-            
+
         default:
             PRINTF("Unknown action type: %d\n", g_bbn_data.action_type);
             SEND_SW(dc, SW_INCORRECT_DATA);
             return false;
     }
-    
+
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
             PRINTF("Signing external input %d\n", i);
@@ -379,7 +379,7 @@ bool sign_custom_inputs(
 
             uint8_t sighash[32];
             uint8_t leafhash[32];
-            uint8_t *pLeaf;
+            uint8_t *pLeaf = NULL;
             switch (g_bbn_data.action_type) {
                 case BBN_POLICY_SLASHING:
                 case BBN_POLICY_SLASHING_UNBONDING:
@@ -401,7 +401,7 @@ bool sign_custom_inputs(
                     segwit_version = 1;  // force taproot
                     break;
                 case BBN_POLICY_EXPANSION:
-                    if(i == 0) {
+                    if (i == 0) {
                         // Input[0]: staking output, needs script path (unbonding script)
                         compute_bbn_leafhash_unbonding(leafhash);
                         pLeaf = leafhash;
@@ -410,9 +410,9 @@ bool sign_custom_inputs(
                     } else {
                         // Input[1]: normal UTXO, use key path (no script)
                         pLeaf = NULL;
-                        //segwit_version = 1;
-                        //PRINTF("Input[1]: Using key path (no script)\n");
-                    }                 
+                        // segwit_version = 1;
+                        // PRINTF("Input[1]: Using key path (no script)\n");
+                    }
                     break;
                 default:
                     break;
@@ -425,7 +425,7 @@ bool sign_custom_inputs(
                 int witness_utxo_len =
                     call_get_merkleized_map_value(dc,
                                                   &input_map,
-                                                  (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
+                                                  (uint8_t[]){PSBT_IN_WITNESS_UTXO},
                                                   1,
                                                   witness_utxo_buf,
                                                   sizeof(witness_utxo_buf));
@@ -482,12 +482,13 @@ bool sign_custom_inputs(
                 uint8_t dummy[128];
                 const uint8_t *tweak_data = dummy;
                 size_t tweak_data_len = 0;
-                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER && g_bbn_data.action_type != BBN_POLICY_EXPANSION) {
+                if (g_bbn_data.action_type != BBN_POLICY_STAKE_TRANSFER &&
+                    g_bbn_data.action_type != BBN_POLICY_EXPANSION) {
                     tweak_data = NULL;
                     tweak_data_len = 0;
                 }
-                if(g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
-                    if(i == 0) {
+                if (g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
+                    if (i == 0) {
                         tweak_data = NULL;
                         tweak_data_len = 0;
                     }
