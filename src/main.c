@@ -379,7 +379,7 @@ bool sign_custom_inputs(
 
             uint8_t sighash[32];
             uint8_t leafhash[32];
-            uint8_t *pLeaf;
+            uint8_t *pLeaf = NULL;
             switch (g_bbn_data.action_type) {
                 case BBN_POLICY_SLASHING:
                 case BBN_POLICY_SLASHING_UNBONDING:
