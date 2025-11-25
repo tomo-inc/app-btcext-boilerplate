@@ -407,11 +407,13 @@ bool sign_custom_inputs(
                         pLeaf = leafhash;
                         segwit_version = 1;  // force taproot
                         PRINTF("Input[0]: Using script path with unbonding leaf\n");
-                    } else {
+                    } else if (i == 1) {
                         // Input[1]: normal UTXO, use key path (no script)
                         pLeaf = NULL;
-                        // segwit_version = 1;
-                        // PRINTF("Input[1]: Using key path (no script)\n");
+                    } else {
+                        //not possible
+                        PRINTF("more then two input for expansion\n");
+                        return false;
                     }
                     break;
                 default:
