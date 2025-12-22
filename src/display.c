@@ -186,10 +186,7 @@ bool display_transaction(dispatcher_context_t *dc,
 }
 
 bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
-    confirmed_status = "Action\nconfirmed";
-    rejected_status = "Action rejected";
     static char action_name[64];
-    static char action_name_approve[64];
     switch ((bbn_action_type_t) action_type) {
         case BBN_POLICY_SLASHING:
             strncpy(action_name, BBN_POLICY_NAME_SLASHING, sizeof(action_name) - 1);
@@ -217,25 +214,13 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
             break;
     }
     action_name[sizeof(action_name) - 1] = '\0';
-
-    // 构造 "Approve ..." 字符串
-    snprintf(action_name_approve, sizeof(action_name_approve), "Approve %s", action_name);
-
-    static nbgl_layoutTagValue_t pair;
-    static nbgl_layoutTagValueList_t pairList;
-    pair.item = "Action name";
-    pair.value = action_name;
-    pairList.nbMaxLinesForValue = 0;
-    pairList.nbPairs = 1;
-    pairList.pairs = &pair;
     PRINTF("Reviewing action: %s\n", action_name);
-    nbgl_useCaseReviewLight(TYPE_OPERATION,
-                            &pairList,
-                            &ICON_APP_ACTION,
-                            "Babylon action",
-                            NULL,
-                            action_name_approve,
-                            status_operation_callback);
+    nbgl_useCaseChoice(&ICON_APP_ACTION,
+                        action_name,
+                       "Action confirmation",
+                       "Approve",
+                       "Reject",
+                       status_operation_callback);
 
     // blocking call until the user approves or rejects the action
     bool result = io_ui_process(dc);
