@@ -458,21 +458,27 @@ int convert_bits(uint8_t *out,
 }
 
 bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
-    nbgl_layoutTagValue_t pairs[16];
-    nbgl_layoutTagValueList_t pairList;
+    static nbgl_layoutTagValue_t pairs[16];
+    static nbgl_layoutTagValueList_t pairList;
+    static char s_name[64];
+    static char s_value[256];
 
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
-    const char *name = "message";
-    uint8_t s_name[64] = {0};
-    uint8_t s_value[256] = {0};
+
+    memset(s_name, 0, sizeof(s_name));
+    memset(s_value, 0, sizeof(s_value));
+
     g_bbn_data.message[g_bbn_data.message_len] = '\0';
 
-    snprintf((char *) s_value, sizeof(s_value), "%s", g_bbn_data.message);
-    snprintf((char *) s_name, sizeof(s_name), "%s", name);
+    snprintf(s_value, sizeof(s_value), "%s", g_bbn_data.message);
+    snprintf(s_name, sizeof(s_name), "message");
+
     // Setup data to display
-    pairs[0].item = (const char *) s_name;
-    pairs[0].value = (const char *) s_value;
+    pairs[0] = (nbgl_layoutTagValue_t){
+        .item = s_name,
+        .value = s_value,
+    };
 
     // Setup list
     pairList.nbMaxLinesForValue = 0;
