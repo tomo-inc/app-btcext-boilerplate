@@ -48,6 +48,80 @@ static void status_operation_callback(bool confirm) {
     }
 }
 
+bool display_cov_public_keys(dispatcher_context_t *dc,
+                         uint32_t pub_count,
+                         uint8_t pubkey[][32],
+                         uint32_t quorum) {
+    static nbgl_layoutTagValue_t pairs[2];
+    static nbgl_layoutTagValueList_t pairList;
+
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+
+    static char quorum_value[8];
+    static char pubkeys_label[32];
+    // 每个缩略公钥11字符 + 换行符，最后一个不需要换行但需要结尾0
+    static char all_pubkeys[BBN_MAX_FP_COUNT * 12];
+    int n_pairs = 0;
+    size_t offset = 0;
+    snprintf(quorum_value, sizeof(quorum_value), "%d", quorum);
+    pairs[n_pairs].item = "Covenant quorum";
+    pairs[n_pairs].value = quorum_value;
+    n_pairs++;
+
+    PRINTF("pub_count: %d\n", pub_count);
+    for (uint32_t i = 0; i < pub_count; i++) {
+        char hexbuf[65];
+        for (uint32_t j = 0; j < 32; j++) {
+            snprintf(&hexbuf[j * 2], 3, "%02X", pubkey[i][j]);
+        }
+        hexbuf[64] = '\0';
+        // 缩略形式: AABB...CCDD
+        all_pubkeys[offset++] = hexbuf[0];
+        all_pubkeys[offset++] = hexbuf[1];
+        all_pubkeys[offset++] = hexbuf[2];
+        all_pubkeys[offset++] = hexbuf[3];
+        all_pubkeys[offset++] = '.';
+        all_pubkeys[offset++] = '.';
+        all_pubkeys[offset++] = '.';
+        all_pubkeys[offset++] = hexbuf[60];
+        all_pubkeys[offset++] = hexbuf[61];
+        all_pubkeys[offset++] = hexbuf[62];
+        all_pubkeys[offset++] = hexbuf[63];
+        if (i < pub_count - 1) {
+            all_pubkeys[offset++] = '\n';  // 换行分隔，最后一个不加
+        }
+    }
+    all_pubkeys[offset] = '\0';
+
+    snprintf(pubkeys_label, sizeof(pubkeys_label), "Covenant public keys %u", pub_count);
+    pairs[n_pairs].item = pubkeys_label;
+    pairs[n_pairs].value = all_pubkeys;
+    n_pairs++;
+
+    pairList.nbMaxLinesForValue = 12;  // 允许多行显示在同一页
+    pairList.nbPairs = n_pairs;
+    pairList.pairs = pairs;
+    PRINTF("n_pairs : %d\n", n_pairs);
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Covenant public keys",
+                            NULL,
+                            "Confirm covenant\npublic keys",
+                            status_operation_callback);
+
+
+    // blocking call until the user approves or rejects the transaction
+    bool result = io_ui_process(dc);
+    if (!result) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+
+    return true;
+}
+
 bool display_public_keys(dispatcher_context_t *dc,
                          uint32_t pub_count,
                          uint8_t pubkey[][32],

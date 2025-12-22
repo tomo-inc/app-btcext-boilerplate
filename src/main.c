@@ -202,10 +202,9 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
 
     if (g_bbn_data.has_cov_key_list) {
-        if (!display_public_keys(dc,
+        if (!display_cov_public_keys(dc,
                                  g_bbn_data.cov_key_count,
                                  g_bbn_data.cov_key_list,
-                                 BBN_DIS_PUB_COV,
                                  g_bbn_data.cov_quorum)) {
             PRINTF("display_public_keys failed\n");
             return false;
