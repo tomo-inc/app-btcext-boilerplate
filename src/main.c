@@ -115,6 +115,12 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             SEND_SW(dc, SW_INCORRECT_DATA);
             return false;
         }
+        PRINTF("TLV data parsed successfully\n");
+        PRINTF("g_bbn_data.action_type: %d\n", g_bbn_data.action_type);
+        // buffer pubkeys when slashing
+        if (g_bbn_data.action_type == BBN_POLICY_SLASHING) {
+            bbn_buffer_pubkeys();
+        }
 
         cx_sha256_t hash_ctx;
         cx_sha256_init(&hash_ctx);
@@ -180,6 +186,31 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
 
+    if (g_bbn_data.action_type == BBN_POLICY_SLASHING &&  g_bbn_pub.buffer_displayed == 0) {
+        if(!g_bbn_data.has_fp_list) {
+            PRINTF("No finality provider public keys\n");
+            return false;
+        }
+        if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
+            PRINTF("display_public_keys failed\n");
+            return false;
+        }
+    }
+    if (g_bbn_data.action_type == BBN_POLICY_SLASHING &&  g_bbn_pub.buffer_displayed == 0) {
+        if(!g_bbn_data.has_cov_key_list) {
+            PRINTF("No covenant public keys\n");
+            return false;
+        }
+        if (!display_cov_public_keys(dc,
+                                 g_bbn_data.cov_key_count,
+                                 g_bbn_data.cov_key_list,
+                                 g_bbn_data.cov_quorum)) {
+            PRINTF("display_public_keys failed\n");
+            return false;
+        }
+        g_bbn_pub.buffer_displayed = 1;
+    }
+
     if (g_bbn_data.action_type == BBN_POLICY_BIP322) {
         if (!ui_confirm_bbn_message(dc)) {
             PRINTF("ui_confirm_bbn_message failed\n");
@@ -194,14 +225,57 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         }
     }
 
-    if (g_bbn_data.has_fp_list) {
+    if (g_bbn_data.action_type == BBN_POLICY_SLASHING_UNBONDING ||
+        g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER
+    ) {
+        if(!bbn_compare_pubkeys()) {
+            if(!g_bbn_data.has_fp_list) {
+            PRINTF("No finality provider public keys\n");
+            return false;
+        }
+        if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
+            PRINTF("display_public_keys failed\n");
+            return false;
+        }
+        }
+        
+    }
+    if (g_bbn_data.action_type == BBN_POLICY_UNBOND ||
+        g_bbn_data.action_type == BBN_POLICY_EXPANSION
+    ) {
+        if(!g_bbn_data.has_fp_list) {
+            PRINTF("No finality provider public keys\n");
+            return false;
+        }
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
             PRINTF("display_public_keys failed\n");
             return false;
         }
     }
 
-    if (g_bbn_data.has_cov_key_list) {
+    if (g_bbn_data.action_type == BBN_POLICY_SLASHING_UNBONDING ||
+        g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER) {
+        if(!bbn_compare_pubkeys()) {
+            if(!g_bbn_data.has_cov_key_list) {
+            PRINTF("No covenant public keys\n");
+            return false;
+            }
+            if (!display_cov_public_keys(dc,
+                                    g_bbn_data.cov_key_count,
+                                    g_bbn_data.cov_key_list,
+                                    g_bbn_data.cov_quorum)) {
+                PRINTF("display_public_keys failed\n");
+                return false;
+            }
+        }
+    }
+
+    if (g_bbn_data.action_type == BBN_POLICY_UNBOND ||
+        g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
+        if(!g_bbn_data.has_cov_key_list) {
+            PRINTF("No covenant public keys\n");
+            return false;
+        }
         if (!display_cov_public_keys(dc,
                                  g_bbn_data.cov_key_count,
                                  g_bbn_data.cov_key_list,
@@ -210,6 +284,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             return false;
         }
     }
+    
     if (g_bbn_data.has_timelock) {
         if (g_bbn_data.action_type != BBN_POLICY_SLASHING &&
             g_bbn_data.action_type != BBN_POLICY_SLASHING_UNBONDING) {

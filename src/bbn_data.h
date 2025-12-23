@@ -94,7 +94,23 @@ typedef struct {
     uint8_t derive_path_len;
 } bbn_data_t;
 
+typedef struct {
+    uint32_t fp_count;
+    uint8_t fp_pub[MAX_FP_COUNT][32];
+    uint32_t cov_count;
+    uint8_t cov_pub[MAX_COV_KEY_COUNT][32];
+    uint32_t cov_quorum;
+    uint32_t pub_buffered;
+    u_int32_t buffer_displayed;
+} bbn_pub_t;
+
 // 全局变量声明
 extern bbn_data_t g_bbn_data;
+extern bbn_pub_t g_bbn_pub;
+
+// 函数声明
+void bbn_buffer_pubkeys(void);
+bool bbn_compare_pubkeys(void);
+void bbn_reset_buffer(void);
 
 #endif  // BBN_DATA_DEF_H
