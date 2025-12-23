@@ -100,8 +100,6 @@ typedef struct {
     uint32_t cov_count;
     uint8_t cov_pub[MAX_COV_KEY_COUNT][32];
     uint32_t cov_quorum;
-    uint32_t pub_buffered;
-    u_int32_t buffer_displayed;
 } bbn_pub_t;
 
 // 全局变量声明

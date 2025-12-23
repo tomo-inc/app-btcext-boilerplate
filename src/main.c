@@ -31,7 +31,7 @@ bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, 
     uint8_t ith_prevout_hash[32];
     if (32 != call_get_merkleized_map_value(dc,
                                             &ith_map,
-                                            (uint8_t[]){PSBT_IN_PREVIOUS_TXID},
+                                            (uint8_t[]) {PSBT_IN_PREVIOUS_TXID},
                                             1,
                                             ith_prevout_hash,
                                             32)) {
@@ -49,7 +49,7 @@ bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
     uint8_t buf[256];
     int32_t len = call_get_merkleized_map_value(dc,
                                                 input_map,
-                                                (uint8_t[]){PSBT_IN_TAP_LEAF_SCRIPT},
+                                                (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT},
                                                 1,
                                                 buf,
                                                 sizeof(buf));
@@ -175,6 +175,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     // use path from psbt
     uint8_t pubkey[32];
     if (!bbn_derive_pubkey(g_bbn_data.derive_path, g_bbn_data.derive_path_len, pubkey)) {
+        bbn_reset_buffer();
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
@@ -186,39 +187,44 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
 
-    if (g_bbn_data.action_type == BBN_POLICY_SLASHING &&  g_bbn_pub.buffer_displayed == 0) {
-        if(!g_bbn_data.has_fp_list) {
+    if (g_bbn_data.action_type == BBN_POLICY_SLASHING) {
+        if (!g_bbn_data.has_fp_list) {
+            bbn_reset_buffer();
             PRINTF("No finality provider public keys\n");
             return false;
         }
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
+            bbn_reset_buffer();
             PRINTF("display_public_keys failed\n");
             return false;
         }
     }
-    if (g_bbn_data.action_type == BBN_POLICY_SLASHING &&  g_bbn_pub.buffer_displayed == 0) {
-        if(!g_bbn_data.has_cov_key_list) {
+    if (g_bbn_data.action_type == BBN_POLICY_SLASHING) {
+        if (!g_bbn_data.has_cov_key_list) {
+            bbn_reset_buffer();
             PRINTF("No covenant public keys\n");
             return false;
         }
         if (!display_cov_public_keys(dc,
-                                 g_bbn_data.cov_key_count,
-                                 g_bbn_data.cov_key_list,
-                                 g_bbn_data.cov_quorum)) {
+                                     g_bbn_data.cov_key_count,
+                                     g_bbn_data.cov_key_list,
+                                     g_bbn_data.cov_quorum)) {
+            bbn_reset_buffer();
             PRINTF("display_public_keys failed\n");
             return false;
         }
-        g_bbn_pub.buffer_displayed = 1;
     }
 
     if (g_bbn_data.action_type == BBN_POLICY_BIP322) {
         if (!ui_confirm_bbn_message(dc)) {
+            bbn_reset_buffer();
             PRINTF("ui_confirm_bbn_message failed\n");
             SEND_SW(dc, SW_DENY);
             return false;
         }
     } else {
         if (!display_actions(dc, g_bbn_data.action_type)) {
+            bbn_reset_buffer();
             PRINTF("display_actions failed\n");
             SEND_SW(dc, SW_DENY);
             return false;
@@ -226,28 +232,33 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
 
     if (g_bbn_data.action_type == BBN_POLICY_SLASHING_UNBONDING ||
-        g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER
-    ) {
-        if(!bbn_compare_pubkeys()) {
-            if(!g_bbn_data.has_fp_list) {
-            PRINTF("No finality provider public keys\n");
-            return false;
+        g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER) {
+        if (!bbn_compare_pubkeys()) {
+            if (!g_bbn_data.has_fp_list) {
+                bbn_reset_buffer();
+                PRINTF("No finality provider public keys\n");
+                return false;
+            }
+            if (!display_public_keys(dc,
+                                     g_bbn_data.fp_count,
+                                     g_bbn_data.fp_list,
+                                     BBN_DIS_PUB_FP,
+                                     0)) {
+                bbn_reset_buffer();
+                PRINTF("display_public_keys failed\n");
+                return false;
+            }
         }
-        if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
-            PRINTF("display_public_keys failed\n");
-            return false;
-        }
-        }
-        
     }
     if (g_bbn_data.action_type == BBN_POLICY_UNBOND ||
-        g_bbn_data.action_type == BBN_POLICY_EXPANSION
-    ) {
-        if(!g_bbn_data.has_fp_list) {
+        g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
+        if (!g_bbn_data.has_fp_list) {
+            bbn_reset_buffer();
             PRINTF("No finality provider public keys\n");
             return false;
         }
         if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
+            bbn_reset_buffer();
             PRINTF("display_public_keys failed\n");
             return false;
         }
@@ -255,15 +266,17 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
 
     if (g_bbn_data.action_type == BBN_POLICY_SLASHING_UNBONDING ||
         g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER) {
-        if(!bbn_compare_pubkeys()) {
-            if(!g_bbn_data.has_cov_key_list) {
-            PRINTF("No covenant public keys\n");
-            return false;
+        if (!bbn_compare_pubkeys()) {
+            if (!g_bbn_data.has_cov_key_list) {
+                bbn_reset_buffer();
+                PRINTF("No covenant public keys\n");
+                return false;
             }
             if (!display_cov_public_keys(dc,
-                                    g_bbn_data.cov_key_count,
-                                    g_bbn_data.cov_key_list,
-                                    g_bbn_data.cov_quorum)) {
+                                         g_bbn_data.cov_key_count,
+                                         g_bbn_data.cov_key_list,
+                                         g_bbn_data.cov_quorum)) {
+                bbn_reset_buffer();
                 PRINTF("display_public_keys failed\n");
                 return false;
             }
@@ -272,23 +285,26 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
 
     if (g_bbn_data.action_type == BBN_POLICY_UNBOND ||
         g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
-        if(!g_bbn_data.has_cov_key_list) {
+        if (!g_bbn_data.has_cov_key_list) {
+            bbn_reset_buffer();
             PRINTF("No covenant public keys\n");
             return false;
         }
         if (!display_cov_public_keys(dc,
-                                 g_bbn_data.cov_key_count,
-                                 g_bbn_data.cov_key_list,
-                                 g_bbn_data.cov_quorum)) {
+                                     g_bbn_data.cov_key_count,
+                                     g_bbn_data.cov_key_list,
+                                     g_bbn_data.cov_quorum)) {
+            bbn_reset_buffer();
             PRINTF("display_public_keys failed\n");
             return false;
         }
     }
-    
+
     if (g_bbn_data.has_timelock) {
         if (g_bbn_data.action_type != BBN_POLICY_SLASHING &&
             g_bbn_data.action_type != BBN_POLICY_SLASHING_UNBONDING) {
             if (!display_timelock(dc, (uint32_t) g_bbn_data.timelock)) {
+                bbn_reset_buffer();
                 PRINTF("display_timelock failed\n");
                 return false;
             }
@@ -296,11 +312,13 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     }
 
     if (!display_external_outputs(dc, st, internal_outputs)) {
+        bbn_reset_buffer();
         PRINTF("display_external_outputs fail \n");
         return false;
     }
 
     if (st->warnings.high_fee && !ui_warn_high_fee(dc)) {
+        bbn_reset_buffer();
         PRINTF("ui_warn_high_fee fail \n");
         SEND_SW(dc, SW_DENY);
         return false;
@@ -311,19 +329,23 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         case BBN_POLICY_SLASHING_UNBONDING:
             if (!bbn_check_slashing_address(st)) {
                 PRINTF("bbn_check_slashing_address failed\n");
+                bbn_reset_buffer();
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
             break;
         case BBN_POLICY_STAKE_TRANSFER:
             if (!bbn_check_staking_address(st)) {
+                bbn_reset_buffer();
                 PRINTF("bbn_check_staking_address failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
+            bbn_reset_buffer();
             break;
         case BBN_POLICY_UNBOND:
             if (!bbn_check_unbond_address(st)) {
+                bbn_reset_buffer();
                 PRINTF("bbn_check_unbond_address failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
@@ -331,11 +353,13 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             break;
         case BBN_POLICY_BIP322:
             if (!psbt_get_txid_signmessage(dc, st, psbt_txid)) {
+                bbn_reset_buffer();
                 PRINTF("psbt_get_txid_signmessage failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
             }
             if (!bbn_check_message(psbt_txid)) {
+                bbn_reset_buffer();
                 PRINTF("bbn_check_message_key failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
@@ -345,6 +369,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             break;
         case BBN_POLICY_EXPANSION:
             if (!bbn_check_staking_address(st)) {
+                bbn_reset_buffer();
                 PRINTF("bbn_check_expansion_address failed\n");
                 SEND_SW(dc, SW_DENY);
                 return false;
@@ -356,6 +381,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
 
     uint64_t fee = st->inputs_total_amount - st->outputs.total_amount;
     if (!ui_validate_transaction(dc, COIN_COINID_SHORT, fee, false)) {
+        bbn_reset_buffer();
         PRINTF("ui_validate_transaction fail \n");
         SEND_SW(dc, SW_DENY);
         return false;
@@ -395,6 +421,7 @@ bool sign_custom_inputs(
                 PRINTF("Invalid input count for action %d: expected 1, got %d\n",
                        g_bbn_data.action_type,
                        st->n_inputs);
+                bbn_reset_buffer();
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
@@ -405,6 +432,7 @@ bool sign_custom_inputs(
             // input[0]: original staking output (stake-output)
             // input[1]: UTXO to pay fee or increase staking amount
             if (st->n_inputs != 2) {
+                bbn_reset_buffer();
                 PRINTF("Invalid input count for expansion: expected 2, got %d\n", st->n_inputs);
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
@@ -417,6 +445,7 @@ bool sign_custom_inputs(
         case BBN_POLICY_STAKE_TRANSFER:
             // Stake transfer can have multiple inputs (>= 1)
             if (st->n_inputs < 1) {
+                bbn_reset_buffer();
                 PRINTF("Invalid input count for stake transfer: expected >= 1, got %d\n",
                        st->n_inputs);
                 SEND_SW(dc, SW_INCORRECT_DATA);
@@ -428,6 +457,7 @@ bool sign_custom_inputs(
         case BBN_POLICY_WITHDRAW:
             // Withdraw must have exactly 1 input
             if (st->n_inputs != 1) {
+                bbn_reset_buffer();
                 PRINTF("Invalid input count for withdraw: expected 1, got %d\n", st->n_inputs);
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
@@ -435,6 +465,7 @@ bool sign_custom_inputs(
             break;
 
         default:
+            bbn_reset_buffer();
             PRINTF("Unknown action type: %d\n", g_bbn_data.action_type);
             SEND_SW(dc, SW_INCORRECT_DATA);
             return false;
@@ -446,6 +477,7 @@ bool sign_custom_inputs(
             // 获取当前输入的map
             merkleized_map_commitment_t input_map;
             if (0 > call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, i, &input_map)) {
+                bbn_reset_buffer();
                 PRINTF("Failed to get input map for input %d\n", i);
                 return false;
             }
@@ -485,7 +517,8 @@ bool sign_custom_inputs(
                         // Input[1]: normal UTXO, use key path (no script)
                         pLeaf = NULL;
                     } else {
-                        //not possible
+                        bbn_reset_buffer();
+                        // not possible
                         PRINTF("more then two input for expansion\n");
                         return false;
                     }
@@ -501,12 +534,13 @@ bool sign_custom_inputs(
                 int witness_utxo_len =
                     call_get_merkleized_map_value(dc,
                                                   &input_map,
-                                                  (uint8_t[]){PSBT_IN_WITNESS_UTXO},
+                                                  (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
                                                   1,
                                                   witness_utxo_buf,
                                                   sizeof(witness_utxo_buf));
 
                 if (witness_utxo_len < 10) {
+                    bbn_reset_buffer();
                     PRINTF("Failed to get witness_utxo\n");
                     return false;
                 }
@@ -537,8 +571,11 @@ bool sign_custom_inputs(
                                                   g_bbn_data.derive_path,
                                                   g_bbn_data.derive_path_len,
                                                   SIGHASH_ALL,
-                                                  sighash))
+                                                  sighash)) {
+                    bbn_reset_buffer();
                     return false;
+                }
+
             } else if (segwit_version == 1) {  // taproot
                 if (!compute_sighash_segwitv1(dc,
                                               st,
@@ -550,6 +587,7 @@ bool sign_custom_inputs(
                                               pLeaf,
                                               SIGHASH_DEFAULT,
                                               sighash)) {
+                    bbn_reset_buffer();
                     PRINTF("Failed to compute sighash for input %d\n", i);
                     return false;
                 }
@@ -580,6 +618,7 @@ bool sign_custom_inputs(
                                                         pLeaf,
                                                         SIGHASH_DEFAULT,
                                                         sighash)) {
+                    bbn_reset_buffer();
                     PRINTF("Failed to sign input %d\n", i);
                     return false;
                 }

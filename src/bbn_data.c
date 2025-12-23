@@ -11,10 +11,6 @@ bbn_pub_t g_bbn_pub;
 
 // 将g_bbn_data中的公钥数据缓存到g_bbn_pub中
 void bbn_buffer_pubkeys(void) {
-    if(g_bbn_pub.pub_buffered == 1) {
-        PRINTF("Public keys already buffered\n");
-        return;
-    }
     PRINTF("Buffering public keys\n");
     g_bbn_pub.fp_count = g_bbn_data.fp_count;
     for (uint32_t i = 0; i < g_bbn_data.fp_count && i < MAX_FP_COUNT; i++) {
@@ -27,7 +23,6 @@ void bbn_buffer_pubkeys(void) {
     }
 
     g_bbn_pub.cov_quorum = g_bbn_data.cov_quorum;
-    g_bbn_pub.pub_buffered = 1;
 }
 
 // 比较g_bbn_pub和g_bbn_data中的公钥数据是否一致
