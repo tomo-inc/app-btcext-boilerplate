@@ -126,15 +126,15 @@ bool display_public_keys(dispatcher_context_t *dc,
                          uint8_t pubkey[][32],
                          uint32_t pub_type,
                          uint32_t quorum) {
-    nbgl_layoutTagValue_t pairs[16];
-    nbgl_layoutTagValueList_t pairList;
+    static nbgl_layoutTagValue_t pairs[16];
+    static nbgl_layoutTagValueList_t pairList;
 
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
 
-    char hexbuf[BBN_MAX_FP_COUNT][65];
-    char labels[BBN_MAX_FP_COUNT][8];
-    char quorum_value[8];
+    static char hexbuf[BBN_MAX_FP_COUNT][65];
+    static char labels[BBN_MAX_FP_COUNT][8];
+    static char quorum_value[8];
     int n_pairs = 0;
 
     if (pub_type == BBN_DIS_PUB_COV) {
@@ -192,17 +192,17 @@ bool display_transaction(dispatcher_context_t *dc,
                          int64_t value_spent,
                          uint8_t *scriptpubkey,
                          uint64_t fee) {
-    nbgl_layoutTagValue_t pairs[4];
-    nbgl_layoutTagValueList_t pairList;
+    static nbgl_layoutTagValue_t pairs[4];
+    static nbgl_layoutTagValueList_t pairList;
 
     // format value_spent addr_str[64],
-    char value_str[32], fee_str[32];
+    static char value_str[32], fee_str[32];
     uint64_t value_spent_abs = value_spent < 0 ? -value_spent : value_spent;
     format_sats_amount(COIN_COINID_SHORT, value_spent_abs, value_str);
     format_sats_amount(COIN_COINID_SHORT, fee, fee_str);
     // Convert scriptpubkey to address string
 
-    char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
+    static char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
 
     if (!format_script(scriptpubkey, 34, output_description)) {
         SEND_SW(dc, SW_NOT_SUPPORTED);
@@ -452,13 +452,13 @@ bool __attribute__((noinline)) display_output(
 }
 
 bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
-    nbgl_layoutTagValue_t pairs[16];
-    nbgl_layoutTagValueList_t pairList;
+    static nbgl_layoutTagValue_t pairs[16];
+    static nbgl_layoutTagValueList_t pairList;
 
     confirmed_status = "Action\nconfirmed";
     rejected_status = "Action rejected";
 
-    char timelock_value[8];
+    static char timelock_value[8];
     snprintf(timelock_value, sizeof(timelock_value), "%d", time_lock);
     pairs[0] = (nbgl_layoutTagValue_t) {
         .item = "Timelock",
