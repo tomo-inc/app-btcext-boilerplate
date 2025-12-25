@@ -404,7 +404,7 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
     // Read the output's scriptPubKey
     result_len = call_get_merkleized_map_value(dc,
                                                &map,
-                                               (uint8_t[]) {PSBT_OUT_SCRIPT},
+                                               (uint8_t[]){PSBT_OUT_SCRIPT},
                                                1,
                                                out_scriptPubKey,
                                                MAX_OUTPUT_SCRIPTPUBKEY_LEN);
@@ -420,15 +420,14 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
 }
 
 bool __attribute__((noinline))
-display_output(
-    dispatcher_context_t *dc,
-    sign_psbt_state_t *st,
-    int cur_output_index,
-    int external_outputs_count,
-    const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
-    size_t out_scriptPubKey_len,
-    uint64_t out_amount) {
-    (void) cur_output_index;
+display_output(dispatcher_context_t *dc,
+               sign_psbt_state_t *st,
+               int cur_output_index,
+               int external_outputs_count,
+               const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
+               size_t out_scriptPubKey_len,
+               uint64_t out_amount) {
+               (void) cur_output_index;
 
     // show this output's address
     char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];

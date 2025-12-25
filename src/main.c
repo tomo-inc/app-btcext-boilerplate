@@ -496,7 +496,7 @@ bool sign_custom_inputs(
                 int witness_utxo_len =
                     call_get_merkleized_map_value(dc,
                                                   &input_map,
-                                                  (uint8_t[]) {PSBT_IN_WITNESS_UTXO},
+                                                  (uint8_t[]){PSBT_IN_WITNESS_UTXO},
                                                   1,
                                                   witness_utxo_buf,
                                                   sizeof(witness_utxo_buf));
