@@ -427,7 +427,7 @@ display_output(dispatcher_context_t *dc,
                const uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
                size_t out_scriptPubKey_len,
                uint64_t out_amount) {
-               (void) cur_output_index;
+    (void) cur_output_index;
 
     // show this output's address
     char output_description[MAX_OUTPUT_SCRIPT_DESC_SIZE];
