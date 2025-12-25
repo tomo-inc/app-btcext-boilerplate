@@ -187,7 +187,35 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     PRINTF_BUF(g_bbn_data.staker_pk, 32);
     PRINTF("action_type: %d\n", g_bbn_data.action_type);
 
-    if (g_bbn_data.action_type == BBN_POLICY_SLASHING) {
+    // 集中判断是否需要显示公钥
+    bool show_fp_keys = false;
+    bool show_cov_keys = false;
+
+    switch (g_bbn_data.action_type) {
+        case BBN_POLICY_SLASHING:
+        case BBN_POLICY_UNBOND:
+        case BBN_POLICY_EXPANSION:
+            // 这些 action 无条件显示公钥
+            show_fp_keys = true;
+            show_cov_keys = true;
+            break;
+        case BBN_POLICY_SLASHING_UNBONDING:
+        case BBN_POLICY_STAKE_TRANSFER:
+            // 这些 action 仅当公钥与缓存不一致时才显示
+            if (!bbn_compare_pubkeys()) {
+                show_fp_keys = true;
+                show_cov_keys = true;
+            }
+            break;
+        case BBN_POLICY_BIP322:
+        case BBN_POLICY_WITHDRAW:
+        default:
+            // 不显示公钥
+            break;
+    }
+
+    // 统一处理 fp_keys 显示
+    if (show_fp_keys) {
         if (!g_bbn_data.has_fp_list) {
             bbn_reset_buffer();
             PRINTF("No finality provider public keys\n");
@@ -199,7 +227,9 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             return false;
         }
     }
-    if (g_bbn_data.action_type == BBN_POLICY_SLASHING) {
+
+    // 统一处理 cov_keys 显示
+    if (show_cov_keys) {
         if (!g_bbn_data.has_cov_key_list) {
             bbn_reset_buffer();
             PRINTF("No covenant public keys\n");
@@ -210,11 +240,12 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                      g_bbn_data.cov_key_list,
                                      g_bbn_data.cov_quorum)) {
             bbn_reset_buffer();
-            PRINTF("display_public_keys failed\n");
+            PRINTF("display_cov_public_keys failed\n");
             return false;
         }
     }
 
+    // 显示 action 确认
     if (g_bbn_data.action_type == BBN_POLICY_BIP322) {
         if (!ui_confirm_bbn_message(dc)) {
             bbn_reset_buffer();
@@ -227,75 +258,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
             bbn_reset_buffer();
             PRINTF("display_actions failed\n");
             SEND_SW(dc, SW_DENY);
-            return false;
-        }
-    }
-
-    if (g_bbn_data.action_type == BBN_POLICY_SLASHING_UNBONDING ||
-        g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER) {
-        if (!bbn_compare_pubkeys()) {
-            if (!g_bbn_data.has_fp_list) {
-                bbn_reset_buffer();
-                PRINTF("No finality provider public keys\n");
-                return false;
-            }
-            if (!display_public_keys(dc,
-                                     g_bbn_data.fp_count,
-                                     g_bbn_data.fp_list,
-                                     BBN_DIS_PUB_FP,
-                                     0)) {
-                bbn_reset_buffer();
-                PRINTF("display_public_keys failed\n");
-                return false;
-            }
-        }
-    }
-    if (g_bbn_data.action_type == BBN_POLICY_UNBOND ||
-        g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
-        if (!g_bbn_data.has_fp_list) {
-            bbn_reset_buffer();
-            PRINTF("No finality provider public keys\n");
-            return false;
-        }
-        if (!display_public_keys(dc, g_bbn_data.fp_count, g_bbn_data.fp_list, BBN_DIS_PUB_FP, 0)) {
-            bbn_reset_buffer();
-            PRINTF("display_public_keys failed\n");
-            return false;
-        }
-    }
-
-    if (g_bbn_data.action_type == BBN_POLICY_SLASHING_UNBONDING ||
-        g_bbn_data.action_type == BBN_POLICY_STAKE_TRANSFER) {
-        if (!bbn_compare_pubkeys()) {
-            if (!g_bbn_data.has_cov_key_list) {
-                bbn_reset_buffer();
-                PRINTF("No covenant public keys\n");
-                return false;
-            }
-            if (!display_cov_public_keys(dc,
-                                         g_bbn_data.cov_key_count,
-                                         g_bbn_data.cov_key_list,
-                                         g_bbn_data.cov_quorum)) {
-                bbn_reset_buffer();
-                PRINTF("display_public_keys failed\n");
-                return false;
-            }
-        }
-    }
-
-    if (g_bbn_data.action_type == BBN_POLICY_UNBOND ||
-        g_bbn_data.action_type == BBN_POLICY_EXPANSION) {
-        if (!g_bbn_data.has_cov_key_list) {
-            bbn_reset_buffer();
-            PRINTF("No covenant public keys\n");
-            return false;
-        }
-        if (!display_cov_public_keys(dc,
-                                     g_bbn_data.cov_key_count,
-                                     g_bbn_data.cov_key_list,
-                                     g_bbn_data.cov_quorum)) {
-            bbn_reset_buffer();
-            PRINTF("display_public_keys failed\n");
             return false;
         }
     }
