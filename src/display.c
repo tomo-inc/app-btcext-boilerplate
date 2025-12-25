@@ -150,7 +150,7 @@ bool display_public_keys(dispatcher_context_t *dc,
         }
         hexbuf[i][64] = '\0';  // 确保字符串以 null 结尾
         snprintf(labels[i], sizeof(labels[i]), "Pub %u", i + 1);
-        pairs[n_pairs] = (nbgl_layoutTagValue_t) {
+        pairs[n_pairs] = (nbgl_layoutTagValue_t){
             .item = labels[i],
             .value = hexbuf[i],
         };
@@ -212,23 +212,23 @@ bool display_transaction(dispatcher_context_t *dc,
     int n_pairs = 0;
 
     if (value_spent >= 0) {
-        pairs[n_pairs++] = (nbgl_layoutTagValue_t) {
+        pairs[n_pairs++] = (nbgl_layoutTagValue_t){
             .item = "Value spent",
             .value = value_str,
         };
     } else {
-        pairs[n_pairs++] = (nbgl_layoutTagValue_t) {
+        pairs[n_pairs++] = (nbgl_layoutTagValue_t){
             .item = "Value received",
             .value = value_str,
         };
     }
 
-    pairs[n_pairs++] = (nbgl_layoutTagValue_t) {
+    pairs[n_pairs++] = (nbgl_layoutTagValue_t){
         .item = "Address",
         .value = output_description,
     };
 
-    pairs[n_pairs++] = (nbgl_layoutTagValue_t) {
+    pairs[n_pairs++] = (nbgl_layoutTagValue_t){
         .item = "Fee",
         .value = fee_str,
     };
@@ -392,7 +392,7 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
     // Read the output's amount
     int result_len = call_get_merkleized_map_value(dc,
                                                    &map,
-                                                   (uint8_t[]) {PSBT_OUT_AMOUNT},
+                                                   (uint8_t[]){PSBT_OUT_AMOUNT},
                                                    1,
                                                    raw_result,
                                                    sizeof(raw_result));
@@ -419,7 +419,8 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
     return true;
 }
 
-bool __attribute__((noinline)) display_output(
+bool __attribute__((noinline))
+display_output(
     dispatcher_context_t *dc,
     sign_psbt_state_t *st,
     int cur_output_index,
@@ -460,7 +461,7 @@ bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
 
     static char timelock_value[8];
     snprintf(timelock_value, sizeof(timelock_value), "%d", time_lock);
-    pairs[0] = (nbgl_layoutTagValue_t) {
+    pairs[0] = (nbgl_layoutTagValue_t){
         .item = "Timelock",
         .value = timelock_value,
     };
@@ -533,7 +534,7 @@ bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
     snprintf(s_name, sizeof(s_name), "message");
 
     // Setup data to display
-    pairs[0] = (nbgl_layoutTagValue_t) {
+    pairs[0] = (nbgl_layoutTagValue_t){
         .item = s_name,
         .value = s_value,
     };

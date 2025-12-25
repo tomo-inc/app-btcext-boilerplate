@@ -28,7 +28,7 @@ bool display_cov_public_keys(dispatcher_context_t *dc,
 
 bool display_actions(dispatcher_context_t *dc, uint32_t action_type);
 
-bool __attribute__((noinline)) display_external_outputs(
+bool __attribute__((noinline))display_external_outputs(
     dispatcher_context_t *dc,
     sign_psbt_state_t *st,
     const uint8_t internal_outputs[static BITVECTOR_REAL_SIZE(MAX_N_OUTPUTS_CAN_SIGN)]);
@@ -39,7 +39,8 @@ bool get_output_script_and_amount(dispatcher_context_t *dc,
                                   uint8_t out_scriptPubKey[static MAX_OUTPUT_SCRIPTPUBKEY_LEN],
                                   size_t *out_scriptPubKey_len);
 
-bool __attribute__((noinline)) display_output(
+bool __attribute__((noinline))
+display_output(
     dispatcher_context_t *dc,
     sign_psbt_state_t *st,
     int cur_output_index,

@@ -31,7 +31,7 @@ bool psbt_get_txid_signmessage(dispatcher_context_t *dc, sign_psbt_state_t *st, 
     uint8_t ith_prevout_hash[32];
     if (32 != call_get_merkleized_map_value(dc,
                                             &ith_map,
-                                            (uint8_t[]) {PSBT_IN_PREVIOUS_TXID},
+                                            (uint8_t[]){PSBT_IN_PREVIOUS_TXID},
                                             1,
                                             ith_prevout_hash,
                                             32)) {
@@ -49,7 +49,7 @@ bool psbt_get_tapleaf_script(dispatcher_context_t *dc,
     uint8_t buf[256];
     int32_t len = call_get_merkleized_map_value(dc,
                                                 input_map,
-                                                (uint8_t[]) {PSBT_IN_TAP_LEAF_SCRIPT},
+                                                (uint8_t[]){PSBT_IN_TAP_LEAF_SCRIPT},
                                                 1,
                                                 buf,
                                                 sizeof(buf));
