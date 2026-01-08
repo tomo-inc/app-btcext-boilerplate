@@ -69,7 +69,6 @@ bool display_cov_public_keys(dispatcher_context_t *dc,
     pairs[n_pairs].value = quorum_value;
     n_pairs++;
 
-    PRINTF("pub_count: %d\n", pub_count);
     for (uint32_t i = 0; i < pub_count; i++) {
         char hexbuf[65];
         for (uint32_t j = 0; j < 32; j++) {
@@ -102,7 +101,6 @@ bool display_cov_public_keys(dispatcher_context_t *dc,
     pairList.nbMaxLinesForValue = 12;  // 允许多行显示在同一页
     pairList.nbPairs = n_pairs;
     pairList.pairs = pairs;
-    PRINTF("n_pairs : %d\n", n_pairs);
     nbgl_useCaseReviewLight(TYPE_OPERATION,
                             &pairList,
                             &ICON_APP_ACTION,
@@ -287,13 +285,31 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
             break;
     }
     action_name[sizeof(action_name) - 1] = '\0';
-    PRINTF("Reviewing action: %s\n", action_name);
-    nbgl_useCaseChoice(&ICON_APP_ACTION,
-                       action_name,
-                       "Action confirmation",
-                       "Approve",
-                       "Reject",
-                       status_operation_callback);
+    // nbgl_useCaseChoice(&ICON_APP_ACTION,
+    //                    action_name,
+    //                    "Action confirmation",
+    //                    "Approve",
+    //                    "Reject",
+    //                    status_operation_callback);
+    static nbgl_layoutTagValue_t pairs[2];
+    static nbgl_layoutTagValueList_t pairList;
+
+     pairs[0] = (nbgl_layoutTagValue_t){
+        .item = "Action Name",
+        .value = action_name,
+    };
+
+    pairList.nbMaxLinesForValue = 0;
+    pairList.nbPairs = 1;
+    pairList.pairs = pairs;
+
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Action confirmation",
+                            NULL,
+                            "Confirm action",
+                            status_operation_callback);
 
     // blocking call until the user approves or rejects the action
     bool result = io_ui_process(dc);
@@ -468,7 +484,6 @@ bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock) {
     pairList.nbMaxLinesForValue = 0;
     pairList.nbPairs = 1;
     pairList.pairs = pairs;
-    PRINTF("display_timelock: %d\n", time_lock);
     nbgl_useCaseReviewLight(TYPE_OPERATION,
                             &pairList,
                             &ICON_APP_ACTION,

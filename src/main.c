@@ -115,8 +115,6 @@ bool custom_apdu_handler(dispatcher_context_t *dc, const command_t *cmd) {
             SEND_SW(dc, SW_INCORRECT_DATA);
             return false;
         }
-        PRINTF("TLV data parsed successfully\n");
-        PRINTF("g_bbn_data.action_type: %d\n", g_bbn_data.action_type);
         // buffer pubkeys when slashing
         if (g_bbn_data.action_type == BBN_POLICY_SLASHING) {
             bbn_buffer_pubkeys();
@@ -163,14 +161,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                                       const uint8_t internal_inputs[64],
                                       const uint8_t internal_outputs[64]) {
     UNUSED(internal_inputs);
-
-    PRINTF("g_bbn_data.derive_path_len: %d\n", g_bbn_data.derive_path_len);
-    PRINTF("g_bbn_data.derive_path: ");
-    for (size_t i = 0; i < g_bbn_data.derive_path_len; i++) {
-        PRINTF("0x%x ", g_bbn_data.derive_path[i]);
-    }
-    PRINTF("\n");
-
     // get staker public key
     // use path from psbt
     uint8_t pubkey[32];
@@ -183,9 +173,6 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
     // need to compare the staker pk in taproot script if have
     memcpy(g_bbn_data.staker_pk, pubkey, 32);
     g_bbn_data.has_staker_pk = true;
-    PRINTF("g_bbn_data.staker_pk: ");
-    PRINTF_BUF(g_bbn_data.staker_pk, 32);
-    PRINTF("action_type: %d\n", g_bbn_data.action_type);
 
     // 集中判断是否需要显示公钥
     bool show_fp_keys = false;
@@ -399,9 +386,6 @@ bool sign_custom_inputs(
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
-            PRINTF("Expansion transaction with 2 inputs:\n");
-            PRINTF("  Input[0]: Staking output (script path unlock)\n");
-            PRINTF("  Input[1]: Fee/Amount UTXO\n");
             break;
 
         case BBN_POLICY_STAKE_TRANSFER:
@@ -413,7 +397,6 @@ bool sign_custom_inputs(
                 SEND_SW(dc, SW_INCORRECT_DATA);
                 return false;
             }
-            PRINTF("Stake transfer with %d input(s)\n", st->n_inputs);
             break;
 
         case BBN_POLICY_WITHDRAW:
@@ -435,7 +418,6 @@ bool sign_custom_inputs(
 
     for (unsigned int i = 0; i < st->n_inputs; i++) {
         if (bitvector_get(internal_inputs, i) == 0) {  // 外部输入
-            PRINTF("Signing external input %d\n", i);
             // 获取当前输入的map
             merkleized_map_commitment_t input_map;
             if (0 > call_get_merkleized_map(dc, st->inputs_root, st->n_inputs, i, &input_map)) {
@@ -474,7 +456,6 @@ bool sign_custom_inputs(
                         compute_bbn_leafhash_unbonding(leafhash);
                         pLeaf = leafhash;
                         segwit_version = 1;  // force taproot
-                        PRINTF("Input[0]: Using script path with unbonding leaf\n");
                     } else if (i == 1) {
                         // Input[1]: normal UTXO, use key path (no script)
                         pLeaf = NULL;
@@ -491,7 +472,6 @@ bool sign_custom_inputs(
 
             if (segwit_version == 0)  // native segwit
             {
-                PRINTF("native segwit %d\n", segwit_version);
                 uint8_t witness_utxo_buf[8 + 1 + 34];  // 8字节金额 + 1字节脚本长度 + 最多34字节脚本
                 int witness_utxo_len =
                     call_get_merkleized_map_value(dc,
@@ -510,7 +490,6 @@ bool sign_custom_inputs(
                 // 解析 scriptPubKey
                 uint8_t script_len = witness_utxo_buf[8];       // 第9字节是脚本长度
                 uint8_t *script_pubkey = witness_utxo_buf + 9;  // 紧跟在长度后面
-                PRINTF("scriptPubKey len: %d\n", script_len);
                 PRINTF_BUF(script_pubkey, script_len);
 
                 // segwitv0 inputs default to SIGHASH_ALL
@@ -524,8 +503,6 @@ bool sign_custom_inputs(
                                               SIGHASH_ALL,
                                               sighash))
                     return false;
-                PRINTF("sighash: ");
-                PRINTF_BUF(sighash, 32);
 
                 if (!sign_sighash_ecdsa_and_yield(dc,
                                                   st,
@@ -553,8 +530,6 @@ bool sign_custom_inputs(
                     PRINTF("Failed to compute sighash for input %d\n", i);
                     return false;
                 }
-                PRINTF("sighash: ");
-                PRINTF_BUF(sighash, 32);
                 uint8_t dummy[128];
                 const uint8_t *tweak_data = dummy;
                 size_t tweak_data_len = 0;
@@ -589,7 +564,5 @@ bool sign_custom_inputs(
             }
         }
     }
-
-    PRINTF("Signed external input\n");
     return true;
 }

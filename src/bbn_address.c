@@ -190,8 +190,6 @@ bool bbn_check_message(uint8_t *psbt_txid) {
 
         if (purpose == 84) {
             // Native SegWit (P2WPKH) - need to derive compressed pubkey
-            PRINTF("Using P2WPKH BIP-322 verification\n");
-
             if (!g_bbn_data.has_message) {
                 PRINTF("Missing message data for P2WPKH BIP-322\n");
                 return false;
@@ -206,12 +204,6 @@ bool bbn_check_message(uint8_t *psbt_txid) {
                 PRINTF("Failed to derive extended pubkey for P2WPKH\n");
                 return false;
             }
-
-            PRINTF("P2WPKH message: ");
-            PRINTF_BUF(g_bbn_data.message, g_bbn_data.message_len);
-            PRINTF("P2WPKH compressed pubkey: ");
-            PRINTF_BUF(xpub.compressed_pubkey, 33);
-
             compute_bip322_txid_by_message_p2wpkh(
                 g_bbn_data.message,
                 g_bbn_data.message_len,

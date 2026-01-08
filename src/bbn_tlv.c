@@ -14,9 +14,6 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
     uint32_t offset = 0;
 
     bbn_data_reset();
-
-    PRINTF("=== TLV Data Parsing ===\n");
-
     while (offset < data_len) {
         if (offset + 1 >= data_len) {
             PRINTF("Error: Not enough data for TAG\n");
