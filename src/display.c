@@ -294,7 +294,7 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
     static nbgl_layoutTagValue_t pairs[2];
     static nbgl_layoutTagValueList_t pairList;
 
-     pairs[0] = (nbgl_layoutTagValue_t){
+    pairs[0] = (nbgl_layoutTagValue_t){
         .item = "Action Name",
         .value = action_name,
     };
