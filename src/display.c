@@ -257,6 +257,10 @@ bool display_transaction(dispatcher_context_t *dc,
 }
 
 bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
+    rejected_status = "Action rejected";
+    confirmed_status = "Action\nconfirmed";
+    static char action_name_approve[64];
+
     static char action_name[64];
     switch ((bbn_action_type_t) action_type) {
         case BBN_POLICY_SLASHING:
@@ -285,12 +289,8 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
             break;
     }
     action_name[sizeof(action_name) - 1] = '\0';
-    // nbgl_useCaseChoice(&ICON_APP_ACTION,
-    //                    action_name,
-    //                    "Action confirmation",
-    //                    "Approve",
-    //                    "Reject",
-    //                    status_operation_callback);
+    snprintf(action_name_approve, sizeof(action_name_approve), "Approve %s", action_name);
+
     static nbgl_layoutTagValue_t pairs[2];
     static nbgl_layoutTagValueList_t pairList;
 
@@ -306,9 +306,9 @@ bool display_actions(dispatcher_context_t *dc, uint32_t action_type) {
     nbgl_useCaseReviewLight(TYPE_OPERATION,
                             &pairList,
                             &ICON_APP_ACTION,
-                            "Action confirmation",
+                            "Babylon Action",
                             NULL,
-                            "Confirm action",
+                            action_name_approve,
                             status_operation_callback);
 
     // blocking call until the user approves or rejects the action
