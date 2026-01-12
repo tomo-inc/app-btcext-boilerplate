@@ -15,7 +15,7 @@ Current
 The staking process needs 64 clicks
 
 
-If only display all infomation when staking
+If only display all information when staking
 | Action            | Action Confirm | FP Confirm | Cov Confirm | Message | Timelock | Output | Fee | Final Confirm | Total | Saving |
 |-------------------|----------------|------------|-------------|---------|----------|--------|-----|---------------|-------|--------|
 | Slashing          | 2+1            |            |             |         |          |    2   |   1 |       1       |   7   |  61%   |

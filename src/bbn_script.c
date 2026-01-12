@@ -142,7 +142,6 @@ bool compute_bbn_leafhash_slashing(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-    PRINTF("compute_bbn_leafhash_slashing tapscript length: %d\n", offset);
     PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
@@ -184,7 +183,6 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
         return false;
 
     tapscript[offset++] = 0x9c;
-    PRINTF("compute_bbn_leafhash_unbonding tapscript length: %d\n", offset);
     PRINTF_BUF(tapscript, offset);
     // Compute leaf hash
     bbn_leafhash_compute(tapscript, offset, leafhash);
@@ -192,8 +190,6 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash) {
 }
 
 bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
-    PRINTF("compute_bbn_leafhash_timelock\n");
-
     uint8_t tapscript[1024] = {0};
     int offset = 0;
 
@@ -219,7 +215,6 @@ bool compute_bbn_leafhash_timelock(uint8_t *leafhash) {
         PRINTF("No timelock found\n");
         return false;
     }
-    PRINTF("compute_bbn_leafhash_timelock tapscript length: %d\n", offset);
     PRINTF_BUF(tapscript, offset);
     bbn_leafhash_compute(tapscript, offset, leafhash);
     return true;
