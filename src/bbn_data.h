@@ -21,7 +21,12 @@
 #define TAG_TXID                0x35
 #define TAG_BURN_ADDRESS        0x36
 #define TAG_BIP32_PATH          0x37
-#define TAG_FP_QUORUM           0x38
+#define TAG_DEPOSITOR           0x38
+#define TAG_VAULT_PROVIDER      0x39
+#define TAG_VK_LIST             0x3a
+#define TAG_VK_QUORUM           0x3b
+#define TAG_UC_LIST             0x3c
+#define TAG_UC_QUORUM           0x3d
 
 // Action Type定义
 #define ACTION_STAKING            1
@@ -30,9 +35,12 @@
 #define ACTION_UNBONDING_SLASHING 4
 #define ACTION_WITHDRAW           5
 #define ACTION_SIGN_MESSAGE       6
+#define ACTION_VAULT_PAYOUT       7
 
 #define MAX_FP_COUNT      16
 #define MAX_COV_KEY_COUNT 16
+#define MAX_VK_COUNT      16
+#define MAX_UC_COUNT      16
 
 typedef struct {
     // Action Type
@@ -92,6 +100,27 @@ typedef struct {
     merkleized_map_commitment_t output_map;
     uint32_t derive_path[5];
     uint8_t derive_path_len;
+
+    // Vault Payout fields
+    bool has_depositor;
+    uint8_t depositor[32];
+
+    bool has_vault_provider;
+    uint8_t vault_provider[32];
+
+    bool has_vk_list;
+    uint8_t vk_count;
+    uint8_t vk_list[MAX_VK_COUNT][32];
+
+    bool has_vk_quorum;
+    uint8_t vk_quorum;
+
+    bool has_uc_list;
+    uint8_t uc_count;
+    uint8_t uc_list[MAX_UC_COUNT][32];
+
+    bool has_uc_quorum;
+    uint8_t uc_quorum;
 } bbn_data_t;
 
 typedef struct {

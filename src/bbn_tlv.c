@@ -118,12 +118,68 @@ bool parse_tlv_data(const uint8_t *data, uint32_t data_len) {
                     return false;
                 }
                 break;
-            case TAG_FP_QUORUM:
-                if (length == 1) {
+            case TAG_DEPOSITOR:  // 0x38 - also used as FP_QUORUM in older versions
+                if (length == 32) {
+                    // Vault Payout: Depositor pubkey
+                    g_bbn_data.has_depositor = true;
+                    memcpy(g_bbn_data.depositor, value, 32);
+                } else if (length == 1) {
+                    // Legacy: FP Quorum
                     g_bbn_data.has_fp_quorum = true;
                     g_bbn_data.fp_quorum = value[0];
                 } else {
-                    PRINTF("  -> Invalid FP Quorum length\n");
+                    PRINTF("  -> Invalid Depositor/FP Quorum length\n");
+                    return false;
+                }
+                break;
+            case TAG_VAULT_PROVIDER:  // 0x39
+                if (length == 32) {
+                    g_bbn_data.has_vault_provider = true;
+                    memcpy(g_bbn_data.vault_provider, value, 32);
+                } else {
+                    PRINTF("  -> Invalid Vault Provider length\n");
+                    return false;
+                }
+                break;
+            case TAG_VK_LIST:  // 0x3a - VaultKeeper List
+                if (length % 32 == 0 && length / 32 <= MAX_VK_COUNT) {
+                    g_bbn_data.has_vk_list = true;
+                    g_bbn_data.vk_count = length / 32;
+                    for (int j = 0; j < g_bbn_data.vk_count; j++) {
+                        memcpy(g_bbn_data.vk_list[j], value + j * 32, 32);
+                    }
+                } else {
+                    PRINTF("  -> Invalid VK List length or too many keys (max %d)\n", MAX_VK_COUNT);
+                    return false;
+                }
+                break;
+            case TAG_VK_QUORUM:  // 0x3b
+                if (length == 1) {
+                    g_bbn_data.has_vk_quorum = true;
+                    g_bbn_data.vk_quorum = value[0];
+                } else {
+                    PRINTF("  -> Invalid VK Quorum length\n");
+                    return false;
+                }
+                break;
+            case TAG_UC_LIST:  // 0x3c - UC List
+                if (length % 32 == 0 && length / 32 <= MAX_UC_COUNT) {
+                    g_bbn_data.has_uc_list = true;
+                    g_bbn_data.uc_count = length / 32;
+                    for (int j = 0; j < g_bbn_data.uc_count; j++) {
+                        memcpy(g_bbn_data.uc_list[j], value + j * 32, 32);
+                    }
+                } else {
+                    PRINTF("  -> Invalid UC List length or too many keys (max %d)\n", MAX_UC_COUNT);
+                    return false;
+                }
+                break;
+            case TAG_UC_QUORUM:  // 0x3d
+                if (length == 1) {
+                    g_bbn_data.has_uc_quorum = true;
+                    g_bbn_data.uc_quorum = value[0];
+                } else {
+                    PRINTF("  -> Invalid UC Quorum length\n");
                     return false;
                 }
                 break;
