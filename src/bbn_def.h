@@ -26,7 +26,8 @@ typedef enum {
     BBN_POLICY_UNBOND,
     BBN_POLICY_WITHDRAW,
     BBN_POLICY_BIP322,
-    BBN_POLICY_EXPANSION
+    BBN_POLICY_EXPANSION,
+    BBN_POLICY_VAULT_PAYOUT
 } bbn_action_type_t;
 
 // Atomic byte constants
