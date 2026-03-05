@@ -169,6 +169,7 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         PRINTF("Failed to derive pubkey\n");
         return false;
     }
+
     // TODO:
     // need to compare the staker pk in taproot script if have
     memcpy(g_bbn_data.staker_pk, pubkey, 32);
@@ -199,6 +200,15 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
         default:
             // 不显示公钥
             break;
+        case BBN_POLICY_VAULT_PAYOUT:
+        case BBN_POLICY_VAULT_PEGIN:
+            // Vault Payout: dispaly Vault Payout info
+            if (!display_vault_payout_info(dc)) {
+                bbn_reset_buffer();
+                PRINTF("display_vault_payout_info failed\n");
+                return false;
+            }
+            return true;
     }
 
     // 统一处理 fp_keys 显示

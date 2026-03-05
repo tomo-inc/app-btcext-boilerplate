@@ -28,15 +28,6 @@
 #define TAG_UC_LIST             0x3c
 #define TAG_UC_QUORUM           0x3d
 
-// Action Type定义
-#define ACTION_STAKING            1
-#define ACTION_UNBOND             2
-#define ACTION_SLASHING           3
-#define ACTION_UNBONDING_SLASHING 4
-#define ACTION_WITHDRAW           5
-#define ACTION_SIGN_MESSAGE       6
-#define ACTION_VAULT_PAYOUT       7
-
 #define MAX_FP_COUNT      16
 #define MAX_COV_KEY_COUNT 16
 #define MAX_VK_COUNT      16

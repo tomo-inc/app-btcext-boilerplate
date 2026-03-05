@@ -571,3 +571,141 @@ bool ui_confirm_bbn_message(dispatcher_context_t *dc) {
     }
     return true;
 }
+
+// Helper function to format pubkey as abbreviated hex string (AABB...CCDD)
+static void format_pubkey_abbrev(const uint8_t pubkey[32], char *out, size_t out_size) {
+    if (out_size < 12) return;
+    snprintf(out, out_size, "%02X%02X...%02X%02X", 
+             pubkey[0], pubkey[1], pubkey[30], pubkey[31]);
+}
+
+// Helper function to format pubkey as full hex string
+static void format_pubkey_full(const uint8_t pubkey[32], char *out, size_t out_size) {
+    if (out_size < 65) return;
+    for (int i = 0; i < 32; i++) {
+        snprintf(&out[i * 2], 3, "%02X", pubkey[i]);
+    }
+    out[64] = '\0';
+}
+
+bool display_vault_payout_info(dispatcher_context_t *dc) {
+    static nbgl_layoutTagValue_t pairs[8];
+    static nbgl_layoutTagValueList_t pairList;
+
+    confirmed_status = "Action\nconfirmed";
+    rejected_status = "Action rejected";
+
+    static char depositor_str[65];
+    static char vault_provider_str[65];
+    static char vk_quorum_str[8];
+    static char uc_quorum_str[8];
+    static char vk_list_str[MAX_VK_COUNT * 12 + 1];  // AABB...CCDD\n per key
+    static char uc_list_str[MAX_UC_COUNT * 12 + 1];
+    static char vk_label[32];
+    static char uc_label[32];
+    
+    int n_pairs = 0;
+
+    // Depositor pubkey (32 bytes -> full hex)
+    if (g_bbn_data.has_depositor) {
+        format_pubkey_full(g_bbn_data.depositor, depositor_str, sizeof(depositor_str));
+        pairs[n_pairs].item = "Depositor";
+        pairs[n_pairs].value = depositor_str;
+        n_pairs++;
+    }
+
+    // Vault Provider pubkey (32 bytes -> full hex)
+    if (g_bbn_data.has_vault_provider) {
+        format_pubkey_full(g_bbn_data.vault_provider, vault_provider_str, sizeof(vault_provider_str));
+        pairs[n_pairs].item = "Vault Provider";
+        pairs[n_pairs].value = vault_provider_str;
+        n_pairs++;
+    }
+
+    // VaultKeeper list (abbreviated format)
+    if (g_bbn_data.has_vk_list && g_bbn_data.vk_count > 0) {
+        size_t offset = 0;
+        for (uint8_t i = 0; i < g_bbn_data.vk_count && i < MAX_VK_COUNT; i++) {
+            char abbrev[12];
+            format_pubkey_abbrev(g_bbn_data.vk_list[i], abbrev, sizeof(abbrev));
+            size_t len = strlen(abbrev);
+            if (offset + len + 1 < sizeof(vk_list_str)) {
+                memcpy(&vk_list_str[offset], abbrev, len);
+                offset += len;
+                if (i < g_bbn_data.vk_count - 1) {
+                    vk_list_str[offset++] = '\n';
+                }
+            }
+        }
+        vk_list_str[offset] = '\0';
+        
+        snprintf(vk_label, sizeof(vk_label), "VaultKeepers (%d)", g_bbn_data.vk_count);
+        pairs[n_pairs].item = vk_label;
+        pairs[n_pairs].value = vk_list_str;
+        n_pairs++;
+    }
+
+    // VaultKeeper quorum (1 byte -> decimal)
+    if (g_bbn_data.has_vk_quorum) {
+        snprintf(vk_quorum_str, sizeof(vk_quorum_str), "%d", g_bbn_data.vk_quorum);
+        pairs[n_pairs].item = "VaultKeepers Quorum";
+        pairs[n_pairs].value = vk_quorum_str;
+        n_pairs++;
+    }
+
+    // UC list (abbreviated format)
+    if (g_bbn_data.has_uc_list && g_bbn_data.uc_count > 0) {
+        size_t offset = 0;
+        for (uint8_t i = 0; i < g_bbn_data.uc_count && i < MAX_UC_COUNT; i++) {
+            char abbrev[12];
+            format_pubkey_abbrev(g_bbn_data.uc_list[i], abbrev, sizeof(abbrev));
+            size_t len = strlen(abbrev);
+            if (offset + len + 1 < sizeof(uc_list_str)) {
+                memcpy(&uc_list_str[offset], abbrev, len);
+                offset += len;
+                if (i < g_bbn_data.uc_count - 1) {
+                    uc_list_str[offset++] = '\n';
+                }
+            }
+        }
+        uc_list_str[offset] = '\0';
+        
+        snprintf(uc_label, sizeof(uc_label), "UC Keys (%d)", g_bbn_data.uc_count);
+        pairs[n_pairs].item = uc_label;
+        pairs[n_pairs].value = uc_list_str;
+        n_pairs++;
+    }
+
+    // UC quorum (1 byte -> decimal)
+    if (g_bbn_data.has_uc_quorum) {
+        snprintf(uc_quorum_str, sizeof(uc_quorum_str), "%d", g_bbn_data.uc_quorum);
+        pairs[n_pairs].item = "UC Quorum";
+        pairs[n_pairs].value = uc_quorum_str;
+        n_pairs++;
+    }
+
+    if (n_pairs == 0) {
+        PRINTF("No Vault Payout data to display\n");
+        return true;
+    }
+
+    pairList.nbMaxLinesForValue = 12;
+    pairList.nbPairs = n_pairs;
+    pairList.pairs = pairs;
+
+    nbgl_useCaseReviewLight(TYPE_OPERATION,
+                            &pairList,
+                            &ICON_APP_ACTION,
+                            "Vault Payout Info",
+                            NULL,
+                            "Confirm Vault\nPayout",
+                            status_operation_callback);
+
+    bool result = io_ui_process(dc);
+    if (!result) {
+        SEND_SW(dc, SW_DENY);
+        return false;
+    }
+
+    return true;
+}

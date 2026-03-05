@@ -51,3 +51,5 @@ display_output(dispatcher_context_t *dc,
 bool display_timelock(dispatcher_context_t *dc, uint32_t time_lock);
 
 bool ui_confirm_bbn_message(dispatcher_context_t *dc);
+
+bool display_vault_payout_info(dispatcher_context_t *dc);
