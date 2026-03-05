@@ -310,3 +310,99 @@ void compute_bip322_txid_by_message_p2wpkh(const uint8_t *message,
     crypto_hash_update(&txid_context.header, hash, 32);
     crypto_hash_digest(&txid_context.header, txid_out, 32);
 }
+
+/**
+ * Compute the tapleaf hash for Vault Payout script
+ * Script structure:
+ * <Depositor> OP_CHECKSIGVERIFY
+ * <VaultProvider> OP_CHECKSIGVERIFY
+ * <VaultKeeper_1> OP_CHECKSIG <VaultKeeper_2..N> OP_CHECKSIGADD <N> OP_NUMEQUALVERIFY
+ * <UC_1> OP_CHECKSIG <UC_2..M> OP_CHECKSIGADD <M> OP_NUMEQUAL
+ */
+bool compute_bbn_leafhash_payout(uint8_t *leafhash) {
+    uint8_t tapscript[1024] = {0};
+    int offset = 0;
+
+    // <Depositor> OP_CHECKSIGVERIFY
+    if (!g_bbn_data.has_depositor) {
+        PRINTF("No depositor pubkey found\n");
+        return false;
+    }
+    tapscript[offset++] = 0x20;  // PUSH 32 bytes
+    memcpy(tapscript + offset, g_bbn_data.depositor, 32);
+    offset += 32;
+    tapscript[offset++] = 0xAD;  // OP_CHECKSIGVERIFY
+
+    // <VaultProvider> OP_CHECKSIGVERIFY
+    if (!g_bbn_data.has_vault_provider) {
+        PRINTF("No vault provider pubkey found\n");
+        return false;
+    }
+    tapscript[offset++] = 0x20;  // PUSH 32 bytes
+    memcpy(tapscript + offset, g_bbn_data.vault_provider, 32);
+    offset += 32;
+    tapscript[offset++] = 0xAD;  // OP_CHECKSIGVERIFY
+
+    // VaultKeepers: <VK_1> OP_CHECKSIG <VK_2..N> OP_CHECKSIGADD <N> OP_NUMEQUALVERIFY
+    if (!g_bbn_data.has_vk_list || g_bbn_data.vk_count == 0) {
+        PRINTF("No vault keeper pubkeys found\n");
+        return false;
+    }
+    if (!g_bbn_data.has_vk_quorum) {
+        PRINTF("No vault keeper quorum found\n");
+        return false;
+    }
+    if (g_bbn_data.vk_count > MAX_VK_COUNT) {
+        PRINTF("Too many vault keeper keys\n");
+        return false;
+    }
+
+    for (int i = 0; i < g_bbn_data.vk_count; i++) {
+        tapscript[offset++] = 0x20;  // PUSH 32 bytes
+        memcpy(tapscript + offset, g_bbn_data.vk_list[i], 32);
+        offset += 32;
+        if (i == 0) {
+            tapscript[offset++] = 0xAC;  // OP_CHECKSIG
+        } else {
+            tapscript[offset++] = 0xBA;  // OP_CHECKSIGADD
+        }
+    }
+    // <N> OP_NUMEQUALVERIFY
+    tapscript[offset++] = 0x50 + g_bbn_data.vk_quorum;  // OP_N (1-16)
+    tapscript[offset++] = 0x9D;  // OP_NUMEQUALVERIFY
+
+    // UC: <UC_1> OP_CHECKSIG <UC_2..M> OP_CHECKSIGADD <M> OP_NUMEQUAL
+    if (!g_bbn_data.has_uc_list || g_bbn_data.uc_count == 0) {
+        PRINTF("No UC pubkeys found\n");
+        return false;
+    }
+    if (!g_bbn_data.has_uc_quorum) {
+        PRINTF("No UC quorum found\n");
+        return false;
+    }
+    if (g_bbn_data.uc_count > MAX_UC_COUNT) {
+        PRINTF("Too many UC keys\n");
+        return false;
+    }
+
+    for (int i = 0; i < g_bbn_data.uc_count; i++) {
+        tapscript[offset++] = 0x20;  // PUSH 32 bytes
+        memcpy(tapscript + offset, g_bbn_data.uc_list[i], 32);
+        offset += 32;
+        if (i == 0) {
+            tapscript[offset++] = 0xAC;  // OP_CHECKSIG
+        } else {
+            tapscript[offset++] = 0xBA;  // OP_CHECKSIGADD
+        }
+    }
+    // <M> OP_NUMEQUAL
+    tapscript[offset++] = 0x50 + g_bbn_data.uc_quorum;  // OP_M (1-16)
+    tapscript[offset++] = 0x9C;  // OP_NUMEQUAL
+
+    PRINTF("Payout tapscript (%d bytes):\n", offset);
+    PRINTF_BUF(tapscript, offset);
+
+    // Compute leaf hash
+    bbn_leafhash_compute(tapscript, offset, leafhash);
+    return true;
+}

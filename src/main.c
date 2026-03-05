@@ -334,7 +334,14 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                 return false;
             }
             break;
-        case BBN_POLICY_VAULT_PAYOUT: // TODO: waiting for new payout define
+        case BBN_POLICY_VAULT_PAYOUT:
+        case BBN_POLICY_VAULT_PEGIN:
+            if (!bbn_check_payout(st)) {
+                bbn_reset_buffer();
+                PRINTF("bbn_check_payout failed\n");
+                SEND_SW(dc, SW_DENY);
+                //return false;
+            }
             break;
         default:
             return false;

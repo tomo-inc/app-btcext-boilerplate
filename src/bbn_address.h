@@ -14,4 +14,6 @@ bool bbn_check_unbond_address(sign_psbt_state_t *st);
 
 bool bbn_check_message(uint8_t *psbt_txid);
 
+bool bbn_check_payout(sign_psbt_state_t *st);
+
 #endif  // BBN_ADDRESS_H

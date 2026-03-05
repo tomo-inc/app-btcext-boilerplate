@@ -240,3 +240,96 @@ bool bbn_check_message(uint8_t *psbt_txid) {
     PRINTF("BIP-322 txid verification passed\n");
     return true;
 }
+
+/**
+ * Check the Vault Payout address (PegIn transaction output 0)
+ * Verifies that the Vault UTXO is a Taproot address with key-path disabled (NUMS pubkey)
+ * and the single leaf script matches the expected payout policy script.
+ */
+bool bbn_check_payout(sign_psbt_state_t *st) {
+    uint8_t tweaked_pubkey[32];
+    uint8_t leafhash[32];
+
+    // Validate required fields are present
+    if (!g_bbn_data.has_depositor) {
+        PRINTF("Missing depositor pubkey for payout check\n");
+        return false;
+    }
+    if (!g_bbn_data.has_vault_provider) {
+        PRINTF("Missing vault provider pubkey for payout check\n");
+        return false;
+    }
+    if (!g_bbn_data.has_vk_list || g_bbn_data.vk_count == 0) {
+        PRINTF("Missing vault keeper pubkeys for payout check\n");
+        return false;
+    }
+    if (!g_bbn_data.has_vk_quorum) {
+        PRINTF("Missing vault keeper quorum for payout check\n");
+        return false;
+    }
+    if (!g_bbn_data.has_uc_list || g_bbn_data.uc_count == 0) {
+        PRINTF("Missing UC pubkeys for payout check\n");
+        return false;
+    }
+    if (!g_bbn_data.has_uc_quorum) {
+        PRINTF("Missing UC quorum for payout check\n");
+        return false;
+    }
+
+    // Compute the payout script leaf hash
+    if (!compute_bbn_leafhash_payout(leafhash)) {
+        PRINTF("Failed to compute payout leaf hash\n");
+        return false;
+    }
+
+    PRINTF("Payout leaf hash:\n");
+    PRINTF_BUF(leafhash, 32);
+
+    // NUMS pubkey (Taproot key-path disabled)
+    // This is H = lift_x(0x0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0)
+    uint8_t NUMS_PUBKEY[] = {0x02, 0x50, 0x92, 0x9b, 0x74, 0xc1, 0xa0, 0x49, 0x54, 0xb7, 0x8b,
+                             0x4b, 0x60, 0x35, 0xe9, 0x7a, 0x5e, 0x07, 0x8a, 0x5a, 0x0f, 0x28,
+                             0xec, 0x96, 0xd5, 0x47, 0xbf, 0xee, 0x9a, 0xce, 0x80, 0x3a, 0xc0};
+
+    uint8_t parity;
+    // Tweak NUMS pubkey with the leaf hash (single leaf = merkle root is the leaf hash)
+    if (crypto_tr_tweak_pubkey(NUMS_PUBKEY + 1, leafhash, 32, &parity, tweaked_pubkey) != 0) {
+        PRINTF("Failed to tweak NUMS public key\n");
+        return false;
+    }
+
+    PRINTF("Tweaked pubkey:\n");
+    PRINTF_BUF(tweaked_pubkey, 32);
+
+    // Get output 0 scriptPubKey (Vault UTXO)
+    uint8_t *out_scriptPubKey = st->outputs.output_scripts[0];
+    size_t out_scriptPubKey_len = st->outputs.output_script_lengths[0];
+
+    PRINTF("Output 0 scriptPubKey (len=%d):\n", out_scriptPubKey_len);
+    PRINTF_BUF(out_scriptPubKey, out_scriptPubKey_len);
+
+    // scriptPubKey format: 0x51 0x20 <32-byte-x-only-pubkey>
+    // 0x51 = OP_1 (witness version 1 for Taproot)
+    // 0x20 = 32 bytes push
+    if (out_scriptPubKey_len != 34) {
+        PRINTF("Invalid Taproot scriptPubKey length: %d\n", out_scriptPubKey_len);
+        return false;
+    }
+    if (out_scriptPubKey[0] != 0x51 || out_scriptPubKey[1] != 0x20) {
+        PRINTF("Invalid Taproot scriptPubKey prefix\n");
+        return false;
+    }
+
+    // Compare the tweaked pubkey with the output scriptPubKey (skip first 2 bytes: OP_1 + PUSH32)
+    if (memcmp(out_scriptPubKey + 2, tweaked_pubkey, 32) != 0) {
+        PRINTF("Payout address mismatch!\n");
+        PRINTF("Expected tweaked pubkey:\n");
+        PRINTF_BUF(tweaked_pubkey, 32);
+        PRINTF("Actual scriptPubKey pubkey:\n");
+        PRINTF_BUF(out_scriptPubKey + 2, 32);
+        return false;
+    }
+
+    PRINTF("Payout address verification passed\n");
+    return true;
+}

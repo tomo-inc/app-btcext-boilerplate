@@ -12,6 +12,8 @@ bool compute_bbn_leafhash_unbonding(uint8_t *leafhash);
 
 bool compute_bbn_leafhash_timelock(uint8_t *leafhash);
 
+bool compute_bbn_leafhash_payout(uint8_t *leafhash);
+
 void compute_bbn_merkle_root(uint8_t *roothash);
 
 void compute_bip322_txid_by_message(const uint8_t *message,
