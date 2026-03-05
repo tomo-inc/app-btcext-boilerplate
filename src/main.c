@@ -324,6 +324,8 @@ bool validate_and_display_transaction(dispatcher_context_t *dc,
                 return false;
             }
             break;
+        case BBN_POLICY_VAULT_PAYOUT: // TODO: waiting for new payout define
+            break;
         default:
             return false;
     }
@@ -465,6 +467,8 @@ bool sign_custom_inputs(
                         PRINTF("more then two input for expansion\n");
                         return false;
                     }
+                    break;
+                case BBN_POLICY_VAULT_PAYOUT: // TODO: waiting for new payout define
                     break;
                 default:
                     break;
